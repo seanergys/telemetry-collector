@@ -1,0 +1,22 @@
+name: tester
+
+sensors:
+  - uuid: 7bc3d210-a49f-4422-8fe8-26ca480d0e1a
+    topic: temperature
+    interval_ms: 1000
+    unit: C
+
+  - uuid: 7bc3d210-a49f-4422-8fe8-26ca480d0e1b
+    topic: humidity
+    interval_ms: 1000
+    unit: "%"
+
+  - uuid: 7bc3d210-a49f-4422-8fe8-26ca480d0e1c
+    topic: pressure
+    interval_ms: 5000
+    unit: hPa
+
+  - uuid: 7bc3d210-a49f-4422-8fe8-26ca480d0e1f
+    topic: flow
+    interval_ms: 5000
+    unit: l/min

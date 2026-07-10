@@ -1,0 +1,6 @@
+plugins:
+  - library: plugins/tester.dylib
+    config: plugins/tester.yaml
+
+  - library: plugins/tester.dylib
+    config: plugins/tester2.yaml
