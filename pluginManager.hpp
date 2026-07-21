@@ -24,17 +24,27 @@ public:
     bool start_plugin(
         const char* uuid);
 
+    bool start_plugin(); // for all
+
     bool stop_plugin(
         const char* uuid);
+
+    bool stop_plugin(); // for all
 
     bool init_plugin(
         const char* uuid);
 
+    bool init_plugin(); // for all
+
     bool finit_plugin(
         const char* uuid);
 
+    bool finit_plugin(); // for all
+
     bool unload_plugin(
         const char* uuid);
+
+    bool unload_plugin(); // for all
 
     bool is_plugin_loaded(
         const char* uuid);
