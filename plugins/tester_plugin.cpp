@@ -1,5 +1,3 @@
-#include "tester_plugin.hpp"
-
 #include <atomic>
 #include <chrono>
 #include <ctime>
@@ -7,6 +5,9 @@
 #include <thread>
 #include <unordered_map>
 #include <yaml-cpp/yaml.h>
+
+#include "tester_plugin.hpp"
+#include "../connection.hpp"
 
 // Global plugin instance
 plugin_interface_t plugin =
@@ -28,23 +29,7 @@ plugin_interface_t plugin =
 static std::unordered_map<std::string, double> sensor_values;
 
 // Global running flag for the run function
-static std::atomic<bool> running(false);
-
-// Sense function with correct signature
-void* sensor_sense(void* sensor)
-{
-    sensor_t* s = (sensor_t*)sensor;
-    sensor_config_t* conf = s->conf;
-
-    // Generate a value (incrementing counter)
-    double value = ++sensor_values[conf->uuid];
-
-    // Print the sensor data
-    std::cout << "[" << conf->uuid << "] value=" << value
-              << ", timestamp=" << std::time(nullptr) << std::endl;
-
-    return nullptr;
-}
+static std::atomic<bool> running(true);
 
 void* tester_create(void)
 {
@@ -138,18 +123,43 @@ bool tester_finit(void* runtime)
     return true;
 }
 
+// Sense function with correct signature
+void* sensor_sense(void* sensor)
+{
+    sensor_t* s = (sensor_t*)sensor;
+    sensor_config_t* conf = s->conf;
+
+    // Generate a value (incrementing counter)
+    double value = ++sensor_values[conf->uuid];
+
+    // Print the sensor data
+    std::cout << "[" << conf->uuid << "] value=" << value
+              << ", timestamp=" << std::time(nullptr) << std::endl;
+    return nullptr;
+}
+
+seanerbus::msg::TimeValueV1 tv (0.0,0.0);
+seanerbus::msg::TimeValueV1 getPayload(std::string uuid){
+    tv.time++;
+    tv.value++;
+    return tv;
+}
+
 void* tester_run(void* runtime)
 {
-    // The run function contains the main execution loop
-    // It should check the running flag and execute sensors/actors accordingly
-    (void)runtime; // Suppress unused parameter warning
-
-    // Simple implementation: just set running flag and wait
-    // In a real plugin, this would contain the actual execution logic
     while (running.load())
     {
         // Execute sensors and actors here
         // This is where the while loop from the old design would go
+
+        for (auto& sensor : ::sensors)
+        {
+            sensor_config_t* conf = sensor.second.conf;
+
+            seanerbus::msg::TimeValueV1 tv = getPayload(conf->uuid);
+            test_publish(tv, conf->uuid);
+        }
+
         std::this_thread::sleep_for(std::chrono::milliseconds(100));
     }
 

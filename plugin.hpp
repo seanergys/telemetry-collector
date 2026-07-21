@@ -16,38 +16,6 @@
 
 #include "sensor.hpp"
 
-#include <seanerbus/client/connection.hpp>
-#include <seanerbus/msg/time_value_v1.hpp>
-
-struct Payload
-{
-    std::uint64_t timestamp;
-    double value;
-};
-
-class SeanerbusWrapper
-{
-public:
-    void publish(std::string uuid, Payload payload)
-    {
-        std::cout << "[" << uuid << "]: timestamp=" << payload.timestamp << ", value=" << payload.value << '\n';
-
-        std::string broker = "localhost";
-        std::string port = "5398";
-
-        seanerbus::client::Connection conn(broker.c_str(), port.c_str());
-
-        auto addr = seanerbus::Address{seanerbus::Uuid{uuid}};
-
-        seanerbus::msg::TimeValueV1 tv{
-            payload.timestamp,
-            payload.value
-        };
-
-        conn.publish(addr, tv.to_capnp());
-    }
-};
-
 typedef struct pluginConfig
 {
     char* path;

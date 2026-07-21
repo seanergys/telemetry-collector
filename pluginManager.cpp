@@ -69,6 +69,7 @@ bool PluginManager::finit_plugin(
     return true;
 }
 
+
 runtime_t *PluginManager::find_runtime(
     const char *uuid)
 {
@@ -257,7 +258,6 @@ bool PluginManager::load_plugin(
     return true;
 }
 
-// ... existing code ...
 bool PluginManager::init_plugin(
     const char *uuid)
 {
@@ -503,7 +503,6 @@ std::vector<std::string> PluginManager::get_plugin_capabilities(
     return capabilities;
 }
 
-// ... existing code ...
 std::vector<std::string> PluginManager::get_loaded_plugins() const
 {
     std::vector<std::string> loaded_plugins;
@@ -557,3 +556,48 @@ bool PluginManager::load_plugin(
     return false;
 }
 
+
+bool PluginManager::init_plugin()
+{
+    for (const auto &item : runtimes)
+    {
+        const char *uuid = item.first.c_str();
+        init_plugin(uuid);
+    }
+}
+
+bool PluginManager::finit_plugin()
+{
+    for (const auto &item : runtimes)
+    {
+        const char *uuid = item.first.c_str();
+        finit_plugin(uuid);
+    }
+}
+
+bool PluginManager::start_plugin()
+{
+    for (const auto &item : runtimes)
+    {
+        const char *uuid = item.first.c_str();
+        start_plugin(uuid);
+    }
+}
+
+bool PluginManager::stop_plugin()
+{
+    for (const auto &item : runtimes)
+    {
+        const char *uuid = item.first.c_str();
+        stop_plugin(uuid);
+    }
+}
+
+bool PluginManager::unload_plugin()
+{
+    for (const auto &item : runtimes)
+    {
+        const char *uuid = item.first.c_str();
+        unload_plugin(uuid);
+    }
+}

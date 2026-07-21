@@ -63,7 +63,7 @@ int main(
             if (!manager.load_plugin(
                 conf.path,
                 conf.config,
-                    conf.uuid))
+                conf.uuid))
             {
             std::cerr
                 << "Failed to load "
@@ -78,10 +78,6 @@ int main(
         {
             std::cerr
                 << "Exception loading "
-                << conf.path << ", "
-                << conf.config << ", "
-                << conf.uuid << ", "
-                << conf.name
                 << ": " << e.what()
                 << '\n';
         }
@@ -137,4 +133,3 @@ int main(
 
     return 0;
 }
-
