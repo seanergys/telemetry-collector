@@ -1,32 +1,46 @@
+#include <yaml-cpp/yaml.h>
+#include <iostream>
+
+#include "plugin.hpp"
 #include "config.hpp"
 
-#include <yaml-cpp/yaml.h>
-
-std::vector<
-    std::pair<
-        std::string,
-        std::string>>
-load_config(
-    const char* filename)
+std::vector<config_t> load_config(const char* filename)
 {
-    YAML::Node yaml =
-        YAML::LoadFile(filename);
+    std::vector<config_t> plugin_configs;
 
-    std::vector<
-        std::pair<
-            std::string,
-            std::string>>
-        plugins;
-
-    for (const auto& node :
-         yaml["plugins"])
+    try
     {
-        plugins.emplace_back(
-            node["library"]
-                .as<std::string>(),
-            node["config"]
-                .as<std::string>());
+        YAML::Node yaml = YAML::LoadFile(filename);
+
+        for (const auto& node : yaml["plugins"])
+        {
+            config_t cfg;
+
+            cfg.path = strdup(
+                node["path"].as<std::string>().c_str());
+
+            cfg.config = strdup(
+                node["config"].as<std::string>().c_str());
+
+            cfg.uuid = strdup(
+                node["uuid"].as<std::string>().c_str());
+
+            cfg.name = strdup(
+                node["name"].as<std::string>().c_str());
+
+            plugin_configs.push_back(cfg);
+        }
+    }
+    catch (const YAML::Exception& e)
+    {
+        std::cerr << "YAML error loading '" << filename
+                << "': " << e.what() << '\n';
+    }
+    catch (const std::exception& e)
+    {
+        std::cerr << "Error loading '" << filename
+                << "': " << e.what() << '\n';
     }
 
-    return plugins;
+    return plugin_configs;
 }

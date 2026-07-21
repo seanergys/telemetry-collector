@@ -4,8 +4,6 @@
 #include <utility>
 #include <vector>
 
-std::vector<
-    std::pair<
-        std::string,
-        std::string>>
-load_config(const char *filename);
+#include "plugin.hpp"
+
+std::vector<config_t> load_config(const char* filename);

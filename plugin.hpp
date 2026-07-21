@@ -12,21 +12,15 @@
 #include <thread>
 #include <utility>
 #include <vector>
+#include <stdbool.h>
 
 #include "sensor.hpp"
 
 #include <seanerbus/client/connection.hpp>
 #include <seanerbus/msg/time_value_v1.hpp>
 
-class Payload
+struct Payload
 {
-public:
-    Payload()
-        : timestamp(0)
-        , value(0.0)
-    {
-    }
-
     std::uint64_t timestamp;
     double value;
 };
@@ -34,7 +28,7 @@ public:
 class SeanerbusWrapper
 {
 public:
-    void send(std::string uuid, Payload payload)
+    void publish(std::string uuid, Payload payload)
     {
         std::cout << "[" << uuid << "]: timestamp=" << payload.timestamp << ", value=" << payload.value << '\n';
 
@@ -54,73 +48,69 @@ public:
     }
 };
 
-struct PluginConfig
+typedef struct pluginConfig
 {
-    std::string name;
-    std::vector<SensorConfig> sensors;
-};
+    char* path;
+    char* uuid;
+    char* config;
+    char* name;
+} config_t;
 
-class Plugin
+typedef void* create_t(void);
+typedef bool  destroy_t(void*);
+typedef bool  init_sensors_t (void*);
+typedef bool  init_actors_t (void*);
+typedef bool  finit_t (void*);
+
+typedef void* configurator_t (void*);
+typedef bool  free_config_t(void*);
+
+typedef void* run_t(void*); // typedef void* publish_t(void*);
+typedef void* req_t(void*);
+typedef void* res_t(void*);
+
+//typedef seanerbus::client::Connection* connection_t;
+typedef void* connection_t;
+
+// This contains only the function pointers and version info - the static interface
+typedef struct
 {
-public:
-    explicit Plugin(const PluginConfig& config);
-    virtual ~Plugin();
+    uint32_t version;
 
-    const std::string& name() const;
+    create_t*  create;
+    destroy_t* destroy;
 
-    // Lifecycle methods
-    virtual void init() = 0;
-    virtual void finit() = 0;
+    init_sensors_t* init_sensors;
+    init_actors_t* init_actors;
+    finit_t*    finit;
 
-    using SenseFn =
-    std::vector<std::pair<std::string, Payload>>
-    (*)(Plugin*);
+    run_t* run; // publish
+    req_t* req; // method to make requests (e.g., to the access daemon)
+    res_t* res; // method to make requests (e.g., to the access daemon);
 
-    using ActFn =
-    void (*)(Plugin*);
+    configurator_t* configurator;  // Plugin-specific configurator function
+    free_config_t* free_config;
 
-    SenseFn m_sense = nullptr;
-    ActFn m_act = nullptr;
+    // Note: sensors, actors, connection, config moved to runtime_t (runtime state)
+} plugin_interface_t;
 
-    // Runtime functions
-    void start();
-    void stop();
+// Runtime state (managed by plugin manager)
+// This contains the runtime resources and state
+typedef struct
+{
+    void* library;
 
-    bool can_sense() const
-    {
-        return m_sense != nullptr;
-    }
+    plugin_interface_t* plugin;  // Plugin descriptor (function pointers)
 
-    bool can_act() const
-    {
-        return m_act != nullptr;
-    }
+    // Runtime state (moved from plugin_interface_t)
+    // Using boolean flags instead of pointers for status checking
+    bool sensors_initialized;
+    bool actors_initialized;
+    connection_t* connection;
+    void* config;  // Plugin-specific configuration (YAML or parsed data)
 
-    std::vector<std::pair<std::string, Payload>> sense()
-    {
-        return m_sense(this);
-    }
+    bool loaded;
+    bool initialized;
+    bool running;
+} runtime_t;
 
-    void act()
-    {
-        m_act(this);
-    }
-
-
-protected:
-    const PluginConfig& config() const;
-
-private:
-    PluginConfig m_config;
-    std::atomic<bool> m_running{false};
-    std::thread m_sense_thread;
-};
-
-using SenseFn =
-std::vector<std::pair<std::string, Payload>>
-(*)(Plugin*);
-
-using ActFn =
-void (*)(Plugin*);
-
-extern "C" Plugin* create_plugin(const PluginConfig& config);

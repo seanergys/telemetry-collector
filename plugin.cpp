@@ -1,15 +1,13 @@
+#include <pthread.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <stdint.h>
+#include <stdbool.h>
+#include <unistd.h>
+
 #include "plugin.hpp"
 
-#include <chrono>
-#include <iostream>
-#include <stdexcept>
-#include <thread>
-
-Plugin::Plugin(const PluginConfig& config)
-    : m_config(config)
-{
-}
-
+/*
 Plugin::~Plugin()
 {
     stop();
@@ -44,7 +42,7 @@ void Plugin::start()
                             {
                         std::cerr << "sending " << uuid << '\n';
                         SeanerbusWrapper seanerbus;
-                                seanerbus.send(uuid, payload);
+                                seanerbus.publish(uuid, payload);
                             }
                             catch (const std::exception& e)
                             {
@@ -103,3 +101,5 @@ Plugin::name() const
 {
     return m_config.name;
 }
+
+*/

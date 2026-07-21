@@ -1,37 +1,27 @@
 #pragma once
 
-#include "../plugin.hpp"
-
 #include <chrono>
+#include <cstdint>
 #include <string>
 #include <unordered_map>
-#include <utility>
 #include <vector>
 
-class TesterPlugin : public Plugin
-{
-public:
-    explicit TesterPlugin(
-        const PluginConfig& config);
+#include "../plugin.hpp"
+#include "../sensor.hpp"
 
-    void init() override;
+/* lifecycle */
+void* tester_create(void);
+bool  tester_destroy(void* runtime);
+bool  tester_init_sensors(void* runtime);
+bool  tester_init_actors(void* runtime);
+bool  tester_finit(void* runtime);
+void* tester_run(void* runtime);
 
-    void finit() override;
+/* config loading */
+void* tester_configurator(void* config);
+bool  tester_free_config(void* config);
 
-    std::vector<std::pair<std::string, Payload>>
-    sense_impl();
+std::map<std::string, sensor_t> sensors; // uuid -> sensors
 
-private:
-    double getValue(
-        const std::string& sensor_uuid);
-
-    std::unordered_map<
-        std::string,
-        double>
-        m_values;
-
-    std::unordered_map<
-        std::string,
-        std::chrono::steady_clock::time_point>
-        m_next_due;
-};
+/* exported plugin descriptor */
+extern "C" plugin_interface_t plugin;
