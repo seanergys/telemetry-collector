@@ -25,11 +25,11 @@ typedef struct sensor_config
 {
     char* uuid;
     char* topic;
-    uint64_t interval_ms;
+    std::chrono::milliseconds interval_ms;
     char* unit;
 } sensor_config_t;
 
-std::map<std::string, sensor_t> sensors; // uuid -> sensors
+std::map<std::string, sensor_t*> sensors; // uuid -> sensors
 
 /* exported plugin descriptor */
 extern "C" plugin_interface_t plugin;

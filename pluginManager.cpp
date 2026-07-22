@@ -97,8 +97,13 @@ PluginManager::~PluginManager()
             finit_plugin(it->first.c_str());
         }
 
-        unload_plugin(it->first.c_str());
+        if (it->second.loaded){
+            unload_plugin(it->first.c_str());
+        }
+
     }
+    //runtimes.clear();
+    //threads.clear();
 }
 
 bool PluginManager::load_plugin(
@@ -360,11 +365,17 @@ bool PluginManager::start_plugin(
     // The run function contains the main execution loop
     if (runtime->plugin->run)
     {
-        threads.emplace_back(
-            [runtime]
-            {
-                runtime->plugin->run(runtime);
-            });
+        try {
+            threads[uuid] = std::thread(
+                [runtime]
+                {
+                    runtime->plugin->run(runtime);
+                }
+            );
+        } catch (const std::system_error& e) {
+            std::cerr << "Failed to create thread for plugin \"" << uuid << "\": " << e.what() << std::endl;
+            return false;
+        }
     }
 
     return true;
@@ -392,15 +403,12 @@ bool PluginManager::stop_plugin(
     runtime->running = false;
 
     // Wait for the run thread to finish
-    for (auto &thread : threads)
+
+    if (threads[uuid].joinable())
     {
-        if (thread.joinable())
-        {
-            thread.join();
-        }
+        threads[uuid].join();
     }
 
-    threads.clear();
     return true;
 }
 
@@ -442,6 +450,10 @@ bool PluginManager::unload_plugin(
     if (runtime->library)
     {
         dlclose(runtime->library);
+    }
+
+    if (runtime->loaded){
+        runtime->loaded = false;
     }
 
     runtimes.erase(it);

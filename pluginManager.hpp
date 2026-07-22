@@ -58,7 +58,7 @@ public:
 
 private:
     std::map<std::string, runtime_t> runtimes; // uuid -> runtime_t
-    std::vector<std::thread> threads;
+    std::map<std::string, std::thread> threads; // uuid -> runtime_t
 
     runtime_t* find_runtime(
         const char* uuid);

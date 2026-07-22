@@ -25,6 +25,8 @@ plugin_interface_t plugin =
     tester_free_config,   // free_config function
 };
 
+void* sensor_sense(void* sensor);
+
 // Global sensor values map for the sense function
 static std::unordered_map<std::string, double> sensor_values;
 
@@ -50,14 +52,13 @@ bool tester_init_sensors(void* runtime)
     YAML::Node* yaml = static_cast<YAML::Node*>(((runtime_t*)runtime)->config);
 
     // Clear any existing sensors in the map
-    ::sensors.clear();
 
-    // Load sensors from the YAML config
+    // Load sensors from the YAML config -> move to configurator
     if ((*yaml)["sensors"].IsSequence())
     {
     for (const auto& node : (*yaml)["sensors"])
     {
-            sensor_t sensor{};
+            sensor_t *sensor = new sensor_t();
 
             // Create a sensor_config_t for this sensor
             sensor_config_t* conf = new sensor_config_t();
@@ -77,11 +78,11 @@ bool tester_init_sensors(void* runtime)
             std::memcpy(conf->unit, unit_str.c_str(), unit_str.size() + 1);
 
             // Set interval
-            conf->interval_ms = node["interval_ms"].as<uint64_t>();
+            conf->interval_ms = std::chrono::milliseconds(node["interval_ms"].as<uint64_t>());
 
             // Set the sensor configuration and sense function
-            sensor.conf = conf;
-            sensor.sense = sensor_sense;
+            sensor->conf = conf;
+            sensor->sense = sensor_sense;
 
             // Add to the global sensors map using UUID as key
             ::sensors[conf->uuid] = sensor;
@@ -98,15 +99,19 @@ bool tester_finit(void* runtime)
     // Clean up the global sensors map
     for (auto& pair : ::sensors)
     {
-        sensor_config_t* conf = pair.second.conf;
+        sensor_config_t* conf = pair.second->conf;
+        if (conf)
+        {
+            delete conf->uuid;
+            delete conf->topic;
+            delete conf->unit;
+            delete conf;
+        }
 
-        // Free allocated strings
-        delete[] conf->uuid;
-        delete[] conf->topic;
-        delete[] conf->unit;
+        sensor_t* sensor = pair.second;
+        if (sensor)
+            delete sensor;
 
-        // Free the config structure itself
-        delete conf;
     }
 
     // Clear the map
@@ -138,29 +143,37 @@ void* sensor_sense(void* sensor)
     return nullptr;
 }
 
-seanerbus::msg::TimeValueV1 tv (0.0,0.0);
-seanerbus::msg::TimeValueV1 getPayload(std::string uuid){
-    tv.time++;
-    tv.value++;
-    return tv;
-}
+
 
 void* tester_run(void* runtime)
 {
-    while (running.load())
-    {
-        // Execute sensors and actors here
-        // This is where the while loop from the old design would go
 
+    seanerbus::msg::TimeValueV1 tv (0,0.0);
+
+    while (((runtime_t*)runtime)->running)
+    {
         for (auto& sensor : ::sensors)
         {
-            sensor_config_t* conf = sensor.second.conf;
+            sensor_config_t* conf = sensor.second->conf;
 
-            seanerbus::msg::TimeValueV1 tv = getPayload(conf->uuid);
+            //seanerbus::msg::TimeValueV1 tv = getPayload(conf->uuid);
+            {
+                tv.time++;
+                tv.value++;
+            }
             test_publish(tv, conf->uuid);
         }
 
-        std::this_thread::sleep_for(std::chrono::milliseconds(100));
+        auto it = sensors.begin();
+        if (it != sensors.end()) {
+            // note this is not doing the right thing, we better imlement the groups first to avoid
+            // the  commplex scheduling logic here
+            std::this_thread::sleep_for(std::chrono::milliseconds(1000));//it->second.conf->interval_ms));
+        } else {
+            // If no sensors, sleep for a default interval
+            std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+        }
+
     }
 
     return nullptr;
