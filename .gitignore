@@ -4,3 +4,7 @@
 *.yaml
 .vscode/
 tests
+capnproto-*
+install
+telemetry-collector
+!sysfs.yaml

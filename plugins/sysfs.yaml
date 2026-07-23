@@ -1,0 +1,22 @@
+name: tester2
+uuid: e94e6e91-a83d-4e04-a147-aab3860d0cxx
+
+
+sensors:
+  - uuid: 7bc3d210-a49f-4422-8fe8-26ca480d0e1f
+    topic: temperature
+    interval_ms: 10000
+    unit: C
+    path: /sys/devices/virtual/thermal/thermal_zone0/temp
+  
+  - uuid: 9bc3d210-a49f-4422-8fe8-26ca480d0e1f
+    topic: temperature
+    interval_ms: 10000
+    unit: C
+    path: /sys/devices/virtual/thermal/thermal_zone1/temp
+  
+  - uuid: 6bc3d210-a49f-4422-8fe8-26ca480d0e1f
+    topic: frequency
+    interval_ms: 10000
+    unit: Hz
+    path: /sys/devices/system/cpu/cpu0/cpufreq/scaling_cur_freq

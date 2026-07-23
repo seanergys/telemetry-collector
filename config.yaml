@@ -1,15 +1,6 @@
 plugins:
-  - path: plugins/tester.dylib
-    config: plugins/tester.yaml
-    uuid: e94e6e91-a83d-4e04-a147-aab3860d0cd7
-    name: tester
 
-  - path: plugins/tester.dylib
-    config: plugins/tester2.yaml
+  - path: /home/di93zad/seanergys/telemetry-collector/plugins/sysfs.so
+    config: plugins/sysfs.yaml
     uuid: e94e6e91-a83d-4e04-a147-aab3860d0cd8
     name: tester2
-
-  - path: plugins/mock.dylib
-    config: plugins/tester2.yaml
-    uuid: e94e6e91-a83d-4e04-a147-aab3860d0cd9
-    name: mock
