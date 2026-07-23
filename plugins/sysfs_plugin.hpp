@@ -28,6 +28,7 @@ typedef struct sensor_config
     std::chrono::milliseconds interval_ms;
     char* unit;
     char* path;
+    char* filter;
 } sensor_config_t;
 
 std::map<std::string, sensor_t*> sensors; // uuid -> sensors
