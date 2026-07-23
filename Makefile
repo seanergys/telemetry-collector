@@ -1,5 +1,5 @@
 CXX := g++
-CXXFLAGS :=-I/usr/local/opt/capnp/include/ -I/usr/local/opt/yaml-cpp/include/ -I/Users/di75gix/codes/seanergys/seanerbus/cpp_examples/install/include -I/usr/local/Cellar/googletest/1.17.0/include -std=c++20 -Wall -Wextra -Wpedantic -O2 -g
+CXXFLAGS :=-I/home/di93zad/seanergys/dataplane/seanerbus/install_seanerbus2/include -I/home/di93zad/seanergys/telemetry-collector/install/yaml-cpp/include/ -I/home/di93zad/seanergys/telemetry-collector/install/capnp-0.8/include/ -I/usr/local/Cellar/googletest/1.17.0/include  -Wall -Wextra -Wpedantic -O2 -g -fPIC
 
 UNAME_S := $(shell uname -s)
 
@@ -11,7 +11,7 @@ ifeq ($(UNAME_S),Darwin)
 else
 	LIB_EXT := so
 	LIBFLAGS := -shared -fPIC
-	LDLIBS := -ldl -lyaml-cpp
+	LDLIBS := -L/home/di93zad/seanergys/telemetry-collector/install/capnp-0.8/lib/  -lcapnp  -L/home/di93zad/seanergys/telemetry-collector/install/yaml-cpp/lib64/ -lyaml-cpp -lkj -lpthread -ldl -L/home/di93zad/seanergys/dataplane/seanerbus/install_seanerbus2/lib64 -lseanerbus
 	GTEST_LIBS := -L/usr/local/Cellar/googletest/1.17.0/lib -lgtest -lgtest_main -pthread
 endif
 
@@ -35,10 +35,10 @@ $(COLLECTOR): telemetry-collector.o $(COMMON_OBJS)
 	$(CXX) $^ -o $@ $(LDLIBS)
 
 plugins/%.$(LIB_EXT): plugins/%_plugin.cpp $(COMMON_OBJS)
-	$(CXX) $(CXXFLAGS) $(LIBFLAGS) $(LDLIBS) $^ -o $@
+	$(CXX) $(CXXFLAGS) $(LIBFLAGS)  $^ -o $@ $(LDLIBS)
 
 tests/plugins/%.$(LIB_EXT): tests/plugins/%_plugin.cpp $(COMMON_OBJS)
-	$(CXX) $(CXXFLAGS) $(LIBFLAGS) $(LDLIBS) $^ -o $@
+	$(CXX) $(CXXFLAGS) $(LIBFLAGS)  $^ -o $@ $(LDLIBS)
 
 test_plugin_manager: tests/unit_tests/test_plugin_manager.o $(COMMON_OBJS)
 	$(CXX) $^ -o tests/unit_tests/test_plugin_manager $(LDLIBS) $(GTEST_LIBS)
