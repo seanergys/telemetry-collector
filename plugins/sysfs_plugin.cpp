@@ -8,6 +8,8 @@
 
 #include <string>
 #include <fstream>
+#include <regex>
+
 
 #include "sysfs_plugin.hpp"
 #include "../connection.hpp"
@@ -54,40 +56,65 @@ bool tester_init_sensors(void *runtime)
     // Get the plugin config from runtime
     YAML::Node *yaml = static_cast<YAML::Node *>(((runtime_t *)runtime)->config);
 
-    // Clear any existing sensors in the map
+    YAML::Node& config = *yaml;
 
+    if (!config["sensor_groups"]) {
+        std::cout << "Missing sensor_groups" << std::endl;
+    }
     // Load sensors from the YAML config -> move to configurator
-    if ((*yaml)["sensors"].IsSequence())
-    {
-        for (const auto &node : (*yaml)["sensors"])
-        {
+   
+    for (const auto& groupEntry : config["sensor_groups"]) {
+        std::string groupName = groupEntry.first.as<std::string>();
+        const YAML::Node& group = groupEntry.second;
+
+        std::string defaultPath_str = group["default_path"]
+            ? group["default_path"].as<std::string>()
+            : "";
+
+        if (!group["sensors"]) {
+            std::cout << "Group '" << groupName << "' missing sensors list" << std::endl;
+            continue;
+        }
+
+
+        for (const auto& item : group["sensors"]){
+
             sensor_t *sensor = new sensor_t();
 
             // Create a sensor_config_t for this sensor
             sensor_config_t *conf = new sensor_config_t();
 
             // Copy UUID
-            std::string uuid_str = node["uuid"].as<std::string>();
+            std::string uuid_str = item["uuid"].as<std::string>();
             conf->uuid = new char[uuid_str.size() + 1];
             std::memcpy(conf->uuid, uuid_str.c_str(), uuid_str.size() + 1);
 
             // Copy topic
-            std::string topic_str = node["topic"].as<std::string>();
+            std::string topic_str = item["topic"].as<std::string>();
             conf->topic = new char[topic_str.size() + 1];
             std::memcpy(conf->topic, topic_str.c_str(), topic_str.size() + 1);
             // Copy unit
-            std::string unit_str = node["unit"].as<std::string>();
+            std::string unit_str = item["unit"].as<std::string>();
             conf->unit = new char[unit_str.size() + 1];
             std::memcpy(conf->unit, unit_str.c_str(), unit_str.size() + 1);
 
-            // Copy path
-            
-            std::string path_str = node["path"].as<std::string>();
-            conf->path = new char[path_str.size() + 1];
-            std::memcpy(conf->path, path_str.c_str(), path_str.size() + 1);
+
+            std::string path_str = item["path"] ? item["path"].as<std::string>() : "";
+
+            if (!path_str.empty() && path_str.front() == '/') {
+                conf->path = new char[path_str.size() + 1];
+                std::memcpy(conf->path, path_str.c_str(), path_str.size() + 1);
+            } else if (!defaultPath_str.empty()) {
+                conf->path = new char[defaultPath_str.size() + 1];
+                std::memcpy(conf->path, defaultPath_str.c_str(), defaultPath_str.size() + 1);
+            }
+
+            std::string filter_str = item["filter"] ? item["filter"].as<std::string>() : "";
+            conf->filter = new char[filter_str.size() + 1];
+            std::memcpy(conf->filter, filter_str.c_str(), filter_str.size() + 1);
             
             // Set interval
-            conf->interval_ms = std::chrono::milliseconds(node["interval_ms"].as<uint64_t>());
+            conf->interval_ms = std::chrono::milliseconds(item["interval_ms"].as<uint64_t>());
 
             // Set the sensor configuration and sense function
             sensor->conf = conf;
@@ -97,6 +124,7 @@ bool tester_init_sensors(void *runtime)
             ::sensors[conf->uuid] = sensor;
         }
     }
+   
 
     // Store the number of sensors in runtime for reference
 
@@ -159,29 +187,47 @@ uint64_t getTimestamp()
             .count());
 }
 
-void getPayload(std::string path, seanerbus::msg::TimeValueV1 *tv)
+void getPayload(std::string path, std::string filter,seanerbus::msg::TimeValueV1 *tv)
 {
-    std::cout << "path" << path << std::endl;
-    std::ifstream file(path);
-    if (!file.is_open())
-    {
-        std::cout << "Error opening  file from :" << path << " error:" << strerror(errno) << std::endl;
+
+    FILE* fp = fopen(path.c_str(), "r");
+    if (fp == nullptr) {
+        std::cout << "Error opening file: " << path
+                   << " error: " << strerror(errno) << std::endl;
     }
 
-    double value = 0;
-    file >> value;
+    char buf[1024];
+    if (fgets(buf, sizeof(buf), fp) == nullptr) {
+        std::cout << "Error reading line from: " << path << std::endl;
+        fclose(fp);
+    }
+    fclose(fp);
 
-    if (file.fail())
-    {
-        std::cout << "Error reading  file from :" << path << " error:" << strerror(errno) << std::endl;
+    // strip trailing newline, if present
+    size_t len = strlen(buf);
+    if (len > 0 && buf[len - 1] == '\n') {
+        buf[len - 1] = '\0';
     }
 
-    std::cout << "sensor value" << value << std::endl;
+
+    std::string valueStr;
+
+    if (filter.empty()) {
+        valueStr = buf;
+    } else {
+        std::cmatch match;   // note: cmatch, not smatch, since buf is a char*
+        std::regex re(filter);
+        if (!std::regex_search(buf, match, re) || match.size() < 2) {
+            std::cout << "No match for pattern '" << filter << "' in line: " << buf << std::endl;
+        }
+        valueStr = match[1].str();
+    }
+
+    //std::cout << "sensor value" << std::stod(valueStr) << std::endl;
 
     tv->time = getTimestamp();
-    tv->value = value;
-    
-    
+    tv->value = std::stod(valueStr); 
+
 }
 
 void *tester_run(void *runtime)
@@ -195,7 +241,7 @@ void *tester_run(void *runtime)
         {
             sensor_config_t *conf = sensor.second->conf;
             
-            getPayload(conf->path, &tv);
+            getPayload(conf->path,conf->filter, &tv);
 
             test_publish(tv, conf->uuid);
            
