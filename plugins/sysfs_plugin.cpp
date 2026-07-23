@@ -55,7 +55,6 @@ bool tester_init_sensors(void *runtime)
 {
     // Get the plugin config from runtime
     YAML::Node *yaml = static_cast<YAML::Node *>(((runtime_t *)runtime)->config);
-
     YAML::Node& config = *yaml;
 
     if (!config["sensor_groups"]) {
