@@ -1,22 +1,59 @@
 name: tester2
 uuid: e94e6e91-a83d-4e04-a147-aab3860d0cxx
 
+sensor_groups:
+  loadavg:
+    default_path: /proc/loadavg
+    sensors:
+      - uuid: 4bc3d210-a49f-4422-8fe8-26ca480d0e1f
+        topic: load_1min
+        interval_ms: 10000
+        unit: "%"
+        filter: '^(\d+\.\d+)'
+      
+      - uuid: 5bc3d210-a49f-4422-8fe8-26ca480d0e1f
+        topic: load_5min
+        interval_ms: 10000
+        unit: "%"
+        filter: '^\d+\.\d+\s+(\d+\.\d+)'
 
-sensors:
-  - uuid: 7bc3d210-a49f-4422-8fe8-26ca480d0e1f
-    topic: temperature
-    interval_ms: 10000
-    unit: C
-    path: /sys/devices/virtual/thermal/thermal_zone0/temp
+      - uuid: 10c3d210-a49f-4422-8fe8-26ca480d0e1f
+        topic: load_15min
+        interval_ms: 10000
+        unit: "%"
+        filter: '^\d+\.\d+\s+\d+\.\d+\s+(\d+\.\d+)'
+      
+      - uuid: 11c3d210-a49f-4422-8fe8-26ca480d0e1f
+        topic: running_procs
+        interval_ms: 10000
+        unit: ""
+        filter: '(\d+)/\d+'
+
+      - uuid: 12c3d210-a49f-4422-8fe8-26ca480d0e1f
+        topic: total_procs
+        interval_ms: 10000
+        unit: ""
+        filter: '\d+/(\d+)'
+
+  frequency:
+    sensors:
+      - uuid: 6bc3d210-a49f-4422-8fe8-26ca480d0e1f
+        topic: frequency1
+        interval_ms: 10000
+        unit: Hz
+        path: /sys/devices/system/cpu/cpu0/cpufreq/scaling_cur_freq               
+
+  temperature:
+    sensors:
+      - uuid: 7bc3d210-a49f-4422-8fe8-26ca480d0e1f
+        topic: temperature1
+        interval_ms: 10000
+        unit: C
+        path: /sys/devices/virtual/thermal/thermal_zone0/temp
+      
+      - uuid: 9bc3d210-a49f-4422-8fe8-26ca480d0e1f
+        topic: temperature2
+        interval_ms: 10000
+        unit: C
+        path: /sys/devices/virtual/thermal/thermal_zone1/temp
   
-  - uuid: 9bc3d210-a49f-4422-8fe8-26ca480d0e1f
-    topic: temperature
-    interval_ms: 10000
-    unit: C
-    path: /sys/devices/virtual/thermal/thermal_zone1/temp
-  
-  - uuid: 6bc3d210-a49f-4422-8fe8-26ca480d0e1f
-    topic: frequency
-    interval_ms: 10000
-    unit: Hz
-    path: /sys/devices/system/cpu/cpu0/cpufreq/scaling_cur_freq
