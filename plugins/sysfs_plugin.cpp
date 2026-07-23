@@ -18,16 +18,16 @@
 plugin_interface_t plugin =
     {
         1, // version
-        tester_create,
-        tester_destroy,
-        tester_init_sensors,
+        sysfs_create,
+        sysfs_destroy,
+        sysfs_init_sensors,
         nullptr, // init_actors
-        tester_finit,
-        tester_run,          // run function
+        sysfs_finit,
+        sysfs_run,          // run function
         nullptr,             // req
         nullptr,             // res
-        tester_configurator, // configurator function
-        tester_free_config,  // free_config function
+        sysfs_configurator, // configurator function
+        sysfs_free_config,  // free_config function
 };
 
 void *sensor_sense(void *sensor);
@@ -38,20 +38,20 @@ static std::unordered_map<std::string, double> sensor_values;
 // Global running flag for the run function
 static std::atomic<bool> running(true);
 
-void *tester_create(void)
+void *sysfs_create(void)
 {
     // Return a pointer to the plugin_interface_t object as the instance
     return &plugin;
 }
 
-bool tester_destroy(void *runtime)
+bool sysfs_destroy(void *runtime)
 {
     // The plugin_interface_t object is statically allocated, so we don't free it
     // Just clean up any resources if needed
     false;
 }
 
-bool tester_init_sensors(void *runtime)
+bool sysfs_init_sensors(void *runtime)
 {
     // Get the plugin config from runtime
     YAML::Node *yaml = static_cast<YAML::Node *>(((runtime_t *)runtime)->config);
@@ -130,7 +130,7 @@ bool tester_init_sensors(void *runtime)
     return true; // We're using the global map, not returning a pointer to sensors
 }
 
-bool tester_finit(void *runtime)
+bool sysfs_finit(void *runtime)
 {
     // Clean up the global sensors map
     for (auto &pair : ::sensors)
@@ -229,7 +229,7 @@ void getPayload(std::string path, std::string filter,seanerbus::msg::TimeValueV1
 
 }
 
-void *tester_run(void *runtime)
+void *sysfs_run(void *runtime)
 {
 
     seanerbus::msg::TimeValueV1 tv(0, 0.0);
@@ -263,17 +263,17 @@ void *tester_run(void *runtime)
     return nullptr;
 }
 
-void *tester_configurator(void *configPtr)
+void *sysfs_configurator(void *configPtr)
 {
     // This function receives the YAML object from the plugin manager
     // and returns a plugin-specific config object
 
     // Cast the void* back to YAML::Node*
     YAML::Node *yaml = static_cast<YAML::Node *>(configPtr);
-    // Create a plugin-specific config object using tester_config_t
+    // Create a plugin-specific config object using sysfs_config_t
 
     /*
-    tester_config_t* config = new tester_config_t();
+    sysfs_config_t* config = new sysfs_config_t();
 
     // Load the config values from the YAML object
     config->name = new char[(*yaml)["name"].as<std::string>().size() + 1];
@@ -319,7 +319,7 @@ void *tester_configurator(void *configPtr)
     return yaml;
 }
 
-bool tester_free_config(void *config)
+bool sysfs_free_config(void *config)
 {
     if (!config)
     {
