@@ -1,6 +1,7 @@
 name: sysfs
 uuid: e94e6e91-a83d-4e04-a147-aab3860d0cxx
 
+<<<<<<< HEAD
 sensor_templates:
   loadavg:
     interval_ms: 50000
@@ -22,6 +23,17 @@ sensor_groups:
     topic: loadavg #  group level    
     uuid: 3bc3d210-a49f-4422-8fe8-26ca480d0e1f # batching -> true
     template: loadavg
+=======
+
+
+sensor_groups:
+  loadavg:
+    default_path: /proc/loadavg
+
+    # add different intervals
+    topic: loadavg #  group level    
+    uuid: 3bc3d210-a49f-4422-8fe8-26ca480d0e1f # batching -> true
+>>>>>>> bd8d7e8 (conf:)
 
     sensors:
       - uuid: 4bc3d210-a49f-4422-8fe8-26ca480d0e1f
@@ -61,16 +73,32 @@ sensor_groups:
         path: /sys/devices/system/cpu/cpu0/cpufreq/scaling_cur_freq               
 
   temperature:
+<<<<<<< HEAD
     template: temp
     
+=======
+    ## explore template structure per group
+
+>>>>>>> bd8d7e8 (conf:)
     sensors:
       - uuid: 7bc3d210-a49f-4422-8fe8-26ca480d0e1f
         topic: temperature1
         description: "temperature on sock 0"
         unit: kelvin
         path: /sys/devices/virtual/thermal/thermal_zone0/temp
+<<<<<<< HEAD
         offset: 273.15
         
+=======
+        
+        ## check with MO
+        ## factor e.g. 0.1 
+        ## offset e.g. -40 
+
+        ## may be factor and offset in tc -> plugin -> tc 
+        ## may be in v2 (/,sq, ...)
+      
+>>>>>>> bd8d7e8 (conf:)
       - uuid: 9bc3d210-a49f-4422-8fe8-26ca480d0e1f
         topic: temperature2
         description: "temperature on sock 1"
