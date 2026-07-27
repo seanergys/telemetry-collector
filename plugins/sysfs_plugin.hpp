@@ -29,6 +29,8 @@ typedef struct sensor_config
     char* unit;
     char* path;
     char* filter;
+    double factor;
+    double offset;
 } sensor_config_t;
 
 std::map<std::string, sensor_t*> sensors; // uuid -> sensors
