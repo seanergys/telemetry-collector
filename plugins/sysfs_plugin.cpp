@@ -114,6 +114,12 @@ bool sysfs_init_sensors(void *runtime)
             
             // Set interval
             conf->interval_ms = std::chrono::milliseconds(item["interval_ms"].as<uint64_t>());
+            
+            // Set factor
+            conf->factor = item["factor"] ? item["factor"].as<double>() : 1.0;
+
+            // Set offset
+            conf->offset = item["offset"] ? item["offset"].as<double>() : 0.0;
 
             // Set the sensor configuration and sense function
             sensor->conf = conf;
@@ -186,7 +192,12 @@ uint64_t getTimestamp()
             .count());
 }
 
-void getPayload(std::string path, std::string filter,seanerbus::msg::TimeValueV1 *tv)
+
+double _applyFactorOffset(double value, double factor, double offset) {
+    return (value * factor) + offset;
+}
+
+void getPayload(std::string path, std::string filter,seanerbus::msg::TimeValueV1 *tv, double factor, double offset)
 {
 
     FILE* fp = fopen(path.c_str(), "r");
@@ -225,8 +236,8 @@ void getPayload(std::string path, std::string filter,seanerbus::msg::TimeValueV1
     //std::cout << "sensor value" << std::stod(valueStr) << std::endl;
 
     tv->time = getTimestamp();
-    tv->value = std::stod(valueStr); 
-
+    tv->value = _applyFactorOffset(std::stod(valueStr), factor, offset);
+    
 }
 
 void *sysfs_run(void *runtime)
@@ -239,8 +250,8 @@ void *sysfs_run(void *runtime)
         for (auto &sensor : ::sensors)
         {
             sensor_config_t *conf = sensor.second->conf;
-            
-            getPayload(conf->path,conf->filter, &tv);
+
+            getPayload(conf->path,conf->filter, &tv, conf->factor, conf->offset);
 
             test_publish(tv, conf->uuid);
            
