@@ -6,4 +6,4 @@ plugins:
   - path: /home/di93zad/seanergys/telemetry-collector/plugins/sysfs.so
     config: plugins/sysfs.yaml
     uuid: e94e6e91-a83d-4e04-a147-aab3860d0cd8
-    name: tester2
+    name: sysfs
