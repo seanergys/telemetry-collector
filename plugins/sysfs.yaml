@@ -1,16 +1,23 @@
-name: tester2
+name: sysfs
 uuid: e94e6e91-a83d-4e04-a147-aab3860d0cxx
+
+
 
 sensor_groups:
   loadavg:
     default_path: /proc/loadavg
+
+    # add different intervals
+    topic: loadavg #  group level    
+    uuid: 3bc3d210-a49f-4422-8fe8-26ca480d0e1f # batching -> true
+
     sensors:
       - uuid: 4bc3d210-a49f-4422-8fe8-26ca480d0e1f
         topic: load_1min
         interval_ms: 10000
         unit: "%"
         filter: '^(\d+\.\d+)'
-      
+        
       - uuid: 5bc3d210-a49f-4422-8fe8-26ca480d0e1f
         topic: load_5min
         interval_ms: 10000
@@ -44,12 +51,21 @@ sensor_groups:
         path: /sys/devices/system/cpu/cpu0/cpufreq/scaling_cur_freq               
 
   temperature:
+    ## explore template structure per group
+
     sensors:
       - uuid: 7bc3d210-a49f-4422-8fe8-26ca480d0e1f
         topic: temperature1
         interval_ms: 10000
         unit: C
         path: /sys/devices/virtual/thermal/thermal_zone0/temp
+        
+        ## check with MO
+        ## factor e.g. 0.1 
+        ## offset e.g. -40 
+
+        ## may be factor and offset in tc -> plugin -> tc 
+        ## may be in v2 (/,sq, ...)
       
       - uuid: 9bc3d210-a49f-4422-8fe8-26ca480d0e1f
         topic: temperature2
