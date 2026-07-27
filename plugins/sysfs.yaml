@@ -1,8 +1,6 @@
 name: sysfs
 uuid: e94e6e91-a83d-4e04-a147-aab3860d0cxx
 
-
-
 sensor_groups:
   loadavg:
     default_path: /proc/loadavg
@@ -57,19 +55,14 @@ sensor_groups:
       - uuid: 7bc3d210-a49f-4422-8fe8-26ca480d0e1f
         topic: temperature1
         interval_ms: 10000
-        unit: C
+        unit: kelvin
         path: /sys/devices/virtual/thermal/thermal_zone0/temp
+        factor: 0.001
+        offset: 273.15
         
-        ## check with MO
-        ## factor e.g. 0.1 
-        ## offset e.g. -40 
-
-        ## may be factor and offset in tc -> plugin -> tc 
-        ## may be in v2 (/,sq, ...)
-      
       - uuid: 9bc3d210-a49f-4422-8fe8-26ca480d0e1f
         topic: temperature2
         interval_ms: 10000
         unit: C
         path: /sys/devices/virtual/thermal/thermal_zone1/temp
-  
+        factor: 0.001
