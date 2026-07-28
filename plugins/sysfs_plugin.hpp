@@ -26,11 +26,12 @@ typedef struct sensor_config
     char* uuid;
     char* topic;
     std::chrono::milliseconds interval_ms;
+    char* description;
     char* unit;
     char* path;
     char* filter;
-    double factor;
-    double offset;
+    double factor = 1;
+    double offset = 0;
 } sensor_config_t;
 
 std::map<std::string, sensor_t*> sensors; // uuid -> sensors

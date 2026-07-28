@@ -51,89 +51,105 @@ bool sysfs_destroy(void *runtime)
     false;
 }
 
+
+static void setCharField(char*& field, const std::string& value) {
+    delete[] field;             
+    field = new char[value.size() + 1];
+    std::memcpy(field, value.c_str(), value.size() + 1);
+}
+
+void applyFields(const YAML::Node& node, sensor_config_t* conf) {
+    if (!node) return;
+
+    if (node["uuid"])           setCharField(conf->uuid,    node["uuid"].as<std::string>());
+    if (node["topic"])          setCharField(conf->topic,    node["topic"].as<std::string>());
+    if (node["interval_ms"])    conf->interval_ms = std::chrono::milliseconds(node["interval_ms"].as<uint64_t>());
+    if (node["description"])    setCharField(conf->description,    node["description"].as<std::string>());
+    if (node["unit"])           setCharField(conf->unit,    node["unit"].as<std::string>());
+    if (node["path"])           setCharField(conf->path,    node["path"].as<std::string>());
+    if (node["filter"])         setCharField(conf->filter, node["filter"].as<std::string>());
+    if (node["factor"])         conf->factor     = node["factor"].as<double>();
+    if (node["offset"])         conf->offset     = node["offset"].as<double>();
+
+   
+}
+
+bool applyTemplateConfigs(const YAML::Node& node, const YAML::Node& templates,sensor_config_t* conf) {
+    if (!node["template"] || !templates) {
+        return false;
+    }
+
+    std::string tmplName = node["template"].as<std::string>();
+    YAML::Node tmpl = templates[tmplName];
+
+    if (!tmpl) {
+        std::cout << "Unknown template referenced: '" << tmplName << "'" << std::endl ;
+        return false;
+    }
+
+    applyFields(tmpl, conf);
+    return true;
+}
+
 bool sysfs_init_sensors(void *runtime)
 {
+
     // Get the plugin config from runtime
     YAML::Node *yaml = static_cast<YAML::Node *>(((runtime_t *)runtime)->config);
     YAML::Node& config = *yaml;
 
+    const YAML::Node& templates = config["sensor_templates"];
+    if (!templates) {
+        std::cout << "No sensor_templates" << std::endl;
+    }
+
     if (!config["sensor_groups"]) {
         std::cout << "Missing sensor_groups" << std::endl;
+        return false;
     }
-    // Load sensors from the YAML config -> move to configurator
-   
+
+    // Load sensor groups from the YAML config
     for (const auto& groupEntry : config["sensor_groups"]) {
+        
         std::string groupName = groupEntry.first.as<std::string>();
         const YAML::Node& group = groupEntry.second;
 
-        std::string defaultPath_str = group["default_path"]
-            ? group["default_path"].as<std::string>()
-            : "";
-
+        // sensor list check
         if (!group["sensors"]) {
             std::cout << "Group '" << groupName << "' missing sensors list" << std::endl;
             continue;
         }
 
-
         for (const auto& item : group["sensors"]){
-
             sensor_t *sensor = new sensor_t();
 
             // Create a sensor_config_t for this sensor
             sensor_config_t *conf = new sensor_config_t();
-
-            // Copy UUID
-            std::string uuid_str = item["uuid"].as<std::string>();
-            conf->uuid = new char[uuid_str.size() + 1];
-            std::memcpy(conf->uuid, uuid_str.c_str(), uuid_str.size() + 1);
-
-            // Copy topic
-            std::string topic_str = item["topic"].as<std::string>();
-            conf->topic = new char[topic_str.size() + 1];
-            std::memcpy(conf->topic, topic_str.c_str(), topic_str.size() + 1);
-            // Copy unit
-            std::string unit_str = item["unit"].as<std::string>();
-            conf->unit = new char[unit_str.size() + 1];
-            std::memcpy(conf->unit, unit_str.c_str(), unit_str.size() + 1);
-
-
-            std::string path_str = item["path"] ? item["path"].as<std::string>() : "";
-
-            if (!path_str.empty() && path_str.front() == '/') {
-                conf->path = new char[path_str.size() + 1];
-                std::memcpy(conf->path, path_str.c_str(), path_str.size() + 1);
-            } else if (!defaultPath_str.empty()) {
-                conf->path = new char[defaultPath_str.size() + 1];
-                std::memcpy(conf->path, defaultPath_str.c_str(), defaultPath_str.size() + 1);
+            
+            //apply group-level template attr
+            if (templates){
+                applyTemplateConfigs(group, templates, conf);
             }
-
-            std::string filter_str = item["filter"] ? item["filter"].as<std::string>() : "";
-            conf->filter = new char[filter_str.size() + 1];
-            std::memcpy(conf->filter, filter_str.c_str(), filter_str.size() + 1);
             
-            // Set interval
-            conf->interval_ms = std::chrono::milliseconds(item["interval_ms"].as<uint64_t>());
+            // apply group-level config attr
+            applyFields(group, conf);
+
+            //apply sensor-level config attr
+            applyFields(item, conf);
             
-            // Set factor
-            conf->factor = item["factor"] ? item["factor"].as<double>() : 1.0;
-
-            // Set offset
-            conf->offset = item["offset"] ? item["offset"].as<double>() : 0.0;
-
             // Set the sensor configuration and sense function
             sensor->conf = conf;
             sensor->sense = sensor_sense;
 
             // Add to the global sensors map using UUID as key
             ::sensors[conf->uuid] = sensor;
+
+            
         }
     }
    
-
-    // Store the number of sensors in runtime for reference
-
     return true; // We're using the global map, not returning a pointer to sensors
+
 }
 
 bool sysfs_finit(void *runtime)
@@ -197,18 +213,18 @@ double _applyFactorOffset(double value, double factor, double offset) {
     return (value * factor) + offset;
 }
 
-void getPayload(std::string path, std::string filter,seanerbus::msg::TimeValueV1 *tv, double factor, double offset)
+void getPayload(sensor_config_t* conf,seanerbus::msg::TimeValueV1 *tv)
 {
 
-    FILE* fp = fopen(path.c_str(), "r");
+    FILE* fp = fopen(conf->path, "r");
     if (fp == nullptr) {
-        std::cout << "Error opening file: " << path
+        std::cout << "Error opening file: " << conf->path
                    << " error: " << strerror(errno) << std::endl;
     }
 
     char buf[1024];
     if (fgets(buf, sizeof(buf), fp) == nullptr) {
-        std::cout << "Error reading line from: " << path << std::endl;
+        std::cout << "Error reading line from: " << conf->path << std::endl;
         fclose(fp);
     }
     fclose(fp);
@@ -222,21 +238,21 @@ void getPayload(std::string path, std::string filter,seanerbus::msg::TimeValueV1
 
     std::string valueStr;
 
-    if (filter.empty()) {
+    if (!conf->filter) {
         valueStr = buf;
     } else {
         std::cmatch match;   // note: cmatch, not smatch, since buf is a char*
-        std::regex re(filter);
+        std::regex re(conf->filter);
         if (!std::regex_search(buf, match, re) || match.size() < 2) {
-            std::cout << "No match for pattern '" << filter << "' in line: " << buf << std::endl;
+            std::cout << "No match for pattern '" << conf->filter << "' in line: " << buf << std::endl;
         }
         valueStr = match[1].str();
     }
 
-    //std::cout << "sensor value" << std::stod(valueStr) << std::endl;
-
+    //std::cout << "sensor path" << conf->path << " value " << std::stod(valueStr) <<" factor" << conf->factor << " offset"<< conf->offset << std::endl;
+    
     tv->time = getTimestamp();
-    tv->value = _applyFactorOffset(std::stod(valueStr), factor, offset);
+    tv->value = _applyFactorOffset(std::stod(valueStr), conf->factor, conf->offset);
     
 }
 
@@ -251,10 +267,10 @@ void *sysfs_run(void *runtime)
         {
             sensor_config_t *conf = sensor.second->conf;
 
-            getPayload(conf->path,conf->filter, &tv, conf->factor, conf->offset);
-
+            getPayload(conf, &tv);
+                         
             test_publish(tv, conf->uuid);
-           
+            //std::cout.flush();
         }
 
         auto it = sensors.begin();
