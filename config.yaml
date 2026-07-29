@@ -1,3 +1,6 @@
+seanerbus:
+  url: localhost:5398
+
 plugins:
   - path: plugins/tester.dylib
     config: plugins/tester.yaml

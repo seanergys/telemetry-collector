@@ -14,7 +14,7 @@
 #include <vector>
 #include <stdbool.h>
 
-#include "sensor.hpp"
+#include "types.hpp"
 
 typedef struct pluginConfig
 {
@@ -81,4 +81,3 @@ typedef struct
     bool initialized;
     bool running;
 } runtime_t;
-

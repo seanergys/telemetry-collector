@@ -11,12 +11,9 @@ typedef struct sensor
     sense_t* sense;
 } sensor_t;
 
+typedef struct actor_config actor_config_t;
 typedef struct actor
 {
-    char* uuid;
-    char* topic;
-    uint64_t interval_ms;
-    char* unit;
-
+    actor_config_t* conf;
     act_t* act;
 } actor_t ;
