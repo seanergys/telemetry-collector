@@ -1,0 +1,78 @@
+name: sysfs
+uuid: e94e6e91-a83d-4e04-a147-aab3860d0cxx
+
+sensor_templates:
+  loadavg:
+    interval_ms: 2000
+    unit: "%"
+    path: /proc/loadavg1 # for testing
+
+  temp: 
+    interval_ms: 5000
+    factor: 0.001
+
+  freq: 
+    interval_ms: 1000
+    unit: Hz
+
+sensor_groups:
+  loadavg:
+    path: /proc/loadavg
+    # add different intervals
+    topic: loadavg #  group level    
+    uuid: 3bc3d210-a49f-4422-8fe8-26ca480d0e1f # batching -> true
+    template: loadavg
+
+    sensors:
+      - uuid: 4bc3d210-a49f-4422-8fe8-26ca480d0e1f
+        topic: load_1min
+        description: "load 1 min"
+        filter: '^(\d+\.\d+)'
+        
+      - uuid: 5bc3d210-a49f-4422-8fe8-26ca480d0e1f
+        topic: load_5min
+        description: "load 5 min"
+        filter: '^\d+\.\d+\s+(\d+\.\d+)'
+
+      - uuid: 10c3d210-a49f-4422-8fe8-26ca480d0e1f
+        topic: load_15min
+        description: "load 15 min"
+        filter: '^\d+\.\d+\s+\d+\.\d+\s+(\d+\.\d+)'
+      
+      - uuid: 11c3d210-a49f-4422-8fe8-26ca480d0e1f
+        topic: running_procs
+        description: "running procs"
+        filter: '(\d+)/\d+'
+
+      - uuid: 12c3d210-a49f-4422-8fe8-26ca480d0e1f
+        topic: total_procs
+        interval_ms: 10000
+        description: "total procs"
+        unit: ""
+        filter: '\d+/(\d+)'
+
+  frequency:
+    template: freq
+
+    sensors:
+      - uuid: 6bc3d210-a49f-4422-8fe8-26ca480d0e1f
+        topic: frequency1
+        description: "frequency on core 0"
+        path: /sys/devices/system/cpu/cpu0/cpufreq/scaling_cur_freq               
+
+  temperature:
+    template: temp
+    
+    sensors:
+      - uuid: 7bc3d210-a49f-4422-8fe8-26ca480d0e1f
+        topic: temperature1
+        description: "temperature on sock 0"
+        unit: kelvin
+        path: /sys/devices/virtual/thermal/thermal_zone0/temp
+        offset: 273.15
+        
+      - uuid: 9bc3d210-a49f-4422-8fe8-26ca480d0e1f
+        topic: temperature2
+        description: "temperature on sock 1"
+        unit: C
+        path: /sys/devices/virtual/thermal/thermal_zone1/temp
