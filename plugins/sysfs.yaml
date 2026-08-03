@@ -3,16 +3,16 @@ uuid: e94e6e91-a83d-4e04-a147-aab3860d0cxx
 
 sensor_templates:
   loadavg:
-    interval_ms: 50000
+    interval_ms: 2000
     unit: "%"
     path: /proc/loadavg1 # for testing
 
   temp: 
-    interval_ms: 10000
+    interval_ms: 5000
     factor: 0.001
 
   freq: 
-    interval_ms: 10000
+    interval_ms: 1000
     unit: Hz
 
 sensor_groups:

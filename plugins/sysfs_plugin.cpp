@@ -5,6 +5,9 @@
 #include <thread>
 #include <unordered_map>
 #include <yaml-cpp/yaml.h>
+#include <queue>
+#include <algorithm>
+#include <map>
 
 #include <string>
 #include <fstream>
@@ -13,6 +16,8 @@
 
 #include "sysfs_plugin.hpp"
 #include "../connection.hpp"
+
+static std::map<std::string, seanerbus::msg::TimeValueV1*> sensor_values = {};
 
 // Global plugin instance
 plugin_interface_t plugin =
@@ -33,10 +38,6 @@ plugin_interface_t plugin =
 void *sensor_sense(void *sensor);
 
 // Global sensor values map for the sense function
-static std::unordered_map<std::string, double> sensor_values;
-
-// Global running flag for the run function
-static std::atomic<bool> running(true);
 
 void *sysfs_create(void)
 {
@@ -93,71 +94,42 @@ bool applyTemplateConfigs(const YAML::Node& node, const YAML::Node& templates,se
 
 bool sysfs_init_sensors(void *runtime)
 {
+    for (const auto& [uuid, conf] : configs){
+        sensor_t *sensor = new sensor_t();
 
-    // Get the plugin config from runtime
-    YAML::Node *yaml = static_cast<YAML::Node *>(((runtime_t *)runtime)->config);
-    YAML::Node& config = *yaml;
+        // Set the sensor configuration and sense function
+        sensor->conf = conf;
+        sensor->sense = sensor_sense;
 
-    const YAML::Node& templates = config["sensor_templates"];
-    if (!templates) {
-        std::cout << "No sensor_templates" << std::endl;
+        // Add to the global sensors map using UUID as key
+        ::sensors[uuid] = sensor;
+        sensor_values[conf->uuid] = new seanerbus::msg::TimeValueV1(0,0.0);
     }
-
-    if (!config["sensor_groups"]) {
-        std::cout << "Missing sensor_groups" << std::endl;
-        return false;
-    }
-
-    // Load sensor groups from the YAML config
-    for (const auto& groupEntry : config["sensor_groups"]) {
-        
-        std::string groupName = groupEntry.first.as<std::string>();
-        const YAML::Node& group = groupEntry.second;
-
-        // sensor list check
-        if (!group["sensors"]) {
-            std::cout << "Group '" << groupName << "' missing sensors list" << std::endl;
-            continue;
-        }
-
-        for (const auto& item : group["sensors"]){
-            sensor_t *sensor = new sensor_t();
-
-            // Create a sensor_config_t for this sensor
-            sensor_config_t *conf = new sensor_config_t();
-            
-            //apply group-level template attr
-            if (templates){
-                applyTemplateConfigs(group, templates, conf);
-            }
-            
-            // apply group-level config attr
-            applyFields(group, conf);
-
-            //apply sensor-level config attr
-            applyFields(item, conf);
-            
-            // Set the sensor configuration and sense function
-            sensor->conf = conf;
-            sensor->sense = sensor_sense;
-
-            // Add to the global sensors map using UUID as key
-            ::sensors[conf->uuid] = sensor;
-
-            
-        }
-    }
+    
    
     return true; // We're using the global map, not returning a pointer to sensors
 
 }
 
+
 bool sysfs_finit(void *runtime)
 {
-    // Clean up the global sensors map
-    for (auto &pair : ::sensors)
+    for (auto& pair : ::configs)
     {
-        sensor_config_t *conf = pair.second->conf;
+        sensor_config_t* conf = pair.second;
+        if (conf)
+        {
+            delete conf->uuid;
+            delete conf->topic;
+            delete conf->unit;
+            delete conf;
+        }
+    }
+
+    // Clean up the global sensors map
+    for (auto& pair : ::sensors)
+    {
+        sensor_config_t* conf = pair.second->conf;
         if (conf)
         {
             delete conf->uuid;
@@ -166,38 +138,25 @@ bool sysfs_finit(void *runtime)
             delete conf;
         }
 
-        sensor_t *sensor = pair.second;
+        sensor_t* sensor = pair.second;
         if (sensor)
             delete sensor;
+
     }
-
-    // Clear the map
     ::sensors.clear();
+    ::configs.clear();
 
+
+    for (auto& pair : sensor_values)
+    {
+        if (pair.second)
+            delete pair.second;
+    }
     // Clear the sensor_values map as well
     sensor_values.clear();
 
-    // Reset num_sensors in runtime
-    // if (runtime) {
-    //    ((runtime_t*)runtime)->num_sensors = 0;
-    //}
 
     return true;
-}
-
-// Sense function with correct signature
-void *sensor_sense(void *sensor)
-{
-    sensor_t *s = (sensor_t *)sensor;
-    sensor_config_t *conf = s->conf;
-
-    // Generate a value (incrementing counter)
-    double value = ++sensor_values[conf->uuid];
-
-    // Print the sensor data
-    std::cout << "[" << conf->uuid << "] test value=" << value
-              << ", .... timestamp=" << std::time(nullptr) << std::endl;
-    return nullptr;
 }
 
 uint64_t getTimestamp()
@@ -249,41 +208,87 @@ void getPayload(sensor_config_t* conf,seanerbus::msg::TimeValueV1 *tv)
         valueStr = match[1].str();
     }
 
-    //std::cout << "sensor path" << conf->path << " value " << std::stod(valueStr) <<" factor" << conf->factor << " offset"<< conf->offset << std::endl;
+    std::cout << "sensor path" << conf->path << " value " << std::stod(valueStr) <<" factor" << conf->factor << " offset"<< conf->offset << std::endl;
     
     tv->time = getTimestamp();
     tv->value = _applyFactorOffset(std::stod(valueStr), conf->factor, conf->offset);
     
 }
 
+// Sense function with correct signature
+void *sensor_sense(void *sensor)
+{
+    sensor_t *s = (sensor_t *)sensor;
+    sensor_config_t *conf = s->conf;
+
+    seanerbus::msg::TimeValueV1 *tv = sensor_values[conf->uuid];
+    
+    getPayload(conf, tv);
+    
+    // Print the sensor data
+    //std::cout << "[" << conf->uuid << "] value=" << tv->value<< ", timestamp=" << tv->time << std::endl;
+    
+    return tv;
+}
+
+struct ScheduledSensor {
+    std::chrono::steady_clock::time_point next_run;
+    sensor_t* sensor;
+};
+struct CompareNextRun
+{
+    bool operator()(const ScheduledSensor& a,
+                    const ScheduledSensor& b) const
+    {
+        return a.next_run > b.next_run;
+    }
+};
+
+
+
+
 void *sysfs_run(void *runtime)
 {
 
-    seanerbus::msg::TimeValueV1 tv(0, 0.0);
+    std::priority_queue<
+        ScheduledSensor,
+        std::vector<ScheduledSensor>,
+        CompareNextRun> queue;
 
-    while (((runtime_t *)runtime)->running)
+    for (auto& s : ::sensors)
     {
-        for (auto &sensor : ::sensors)
-        {
-            sensor_config_t *conf = sensor.second->conf;
+        queue.push({
+            std::chrono::steady_clock::now(),
+            s.second
+        });
+    }
 
-            getPayload(conf, &tv);
-                         
-            test_publish(tv, conf->uuid);
-            //std::cout.flush();
-        }
+    //seanerbus::msg::TimeValueV1 tv(0, 0.0);
 
-        auto it = sensors.begin();
-        if (it != sensors.end())
+    while (((runtime_t*)runtime)->running)
+    {
+        auto now = std::chrono::steady_clock::now();
+
+        // Sleep until the next sensor is due.
+        if (queue.top().next_run > now)
+            std::this_thread::sleep_until(queue.top().next_run);
+
+        now = std::chrono::steady_clock::now();
+
+
+        // Process every sensor that's ready.
+        while (!queue.empty() && queue.top().next_run <= now)
         {
-            // note this is not doing the right thing, we better imlement the groups first to avoid
-            // the  commplex scheduling logic here
-            std::this_thread::sleep_for(std::chrono::milliseconds(1000)); // it->second.conf->interval_ms));
-        }
-        else
-        {
-            // If no sensors, sleep for a default interval
-            std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+            auto s = queue.top();
+            queue.pop();
+            
+            seanerbus::msg::TimeValueV1 tv = *(seanerbus::msg::TimeValueV1*) s.sensor->sense(s.sensor);
+
+            //std::cout << tv.value<< ", timestamp=" << tv.time << std::endl;
+            test_publish(tv, s.sensor->conf->uuid);
+
+            s.next_run += s.sensor->conf->interval_ms;
+            queue.push(s);
         }
     }
 
@@ -296,52 +301,53 @@ void *sysfs_configurator(void *configPtr)
     // and returns a plugin-specific config object
 
     // Cast the void* back to YAML::Node*
-    YAML::Node *yaml = static_cast<YAML::Node *>(configPtr);
-    // Create a plugin-specific config object using sysfs_config_t
+    YAML::Node* yaml = static_cast<YAML::Node*>(configPtr);
+    YAML::Node& config = *yaml;
 
-    /*
-    sysfs_config_t* config = new sysfs_config_t();
-
-    // Load the config values from the YAML object
-    config->name = new char[(*yaml)["name"].as<std::string>().size() + 1];
-    std::memcpy(
-        config->name,
-        (*yaml)["name"].as<std::string>().c_str(),
-        (*yaml)["name"].as<std::string>().size() + 1);
-
-    config->uuid = new char[(*yaml)["uuid"].as<std::string>().size() + 1];
-    std::memcpy(
-        config->uuid,
-        (*yaml)["uuid"].as<std::string>().c_str(),
-        (*yaml)["uuid"].as<std::string>().size() + 1);
-
-    for (const auto& node : (*yaml)["sensors"])
-    {
-        sensor_config_t sensor{};
-
-        sensor.uuid = new char[node["uuid"].as<std::string>().size() + 1];
-        std::memcpy(
-            sensor.uuid,
-            node["uuid"].as<std::string>().c_str(),
-            node["uuid"].as<std::string>().size() + 1);
-
-        sensor.topic = new char[node["topic"].as<std::string>().size() + 1];
-        std::memcpy(
-            sensor.topic,
-            node["topic"].as<std::string>().c_str(),
-            node["topic"].as<std::string>().size() + 1);
-
-        sensor.interval_ms = node["interval_ms"].as<uint64_t>();
-
-        sensor.unit = new char[node["unit"].as<std::string>().size() + 1];
-        std::memcpy(
-            sensor.unit,
-            node["unit"].as<std::string>().c_str(),
-            node["unit"].as<std::string>().size() + 1);
-
-        config->sensors.push_back(sensor);
+    const YAML::Node& templates = config["sensor_templates"];
+    if (!templates) {
+        std::cout << "No sensor_templates" << std::endl;
     }
-    */
+
+    if (!config["sensor_groups"]) {
+        std::cout << "Missing sensor_groups" << std::endl;
+        return yaml;
+    }
+
+    // Load sensor groups from the YAML config
+    for (const auto& groupEntry : config["sensor_groups"]) {
+        
+        std::string groupName = groupEntry.first.as<std::string>();
+        const YAML::Node& group = groupEntry.second;
+
+        // sensor list check
+        if (!group["sensors"]) {
+            std::cout << "Group '" << groupName << "' missing sensors list" << std::endl;
+            continue;
+        }
+
+        for (const auto& item : group["sensors"]){
+
+            // Create a sensor_config_t for this sensor
+            sensor_config_t *conf = new sensor_config_t();
+            
+            //apply group-level template attr
+            if (templates){
+                applyTemplateConfigs(group, templates, conf);
+            }
+            
+            // apply group-level config attr
+            applyFields(group, conf);
+
+            //apply sensor-level config attr
+            applyFields(item, conf);
+            
+            // Add to the global sensors map using UUID as key
+            ::configs[conf->uuid] = conf;
+            
+        }
+    }
+
 
     return yaml;
 }
@@ -352,10 +358,5 @@ bool sysfs_free_config(void *config)
     {
         return false;
     }
-
-    // Since the configurator returns a YAML::Node*, we need to delete it
-    YAML::Node *yaml = static_cast<YAML::Node *>(config);
-    delete yaml;
-
     return true;
 }

@@ -7,7 +7,7 @@
 #include <vector>
 
 #include "../plugin.hpp"
-#include "../sensor.hpp"
+#include "../types.hpp"
 
 /* lifecycle */
 void* sysfs_create(void);
@@ -34,7 +34,9 @@ typedef struct sensor_config
     double offset = 0;
 } sensor_config_t;
 
+std::map<std::string, sensor_config_t*> configs; // uuid -> configs
 std::map<std::string, sensor_t*> sensors; // uuid -> sensors
+
 
 /* exported plugin descriptor */
 extern "C" plugin_interface_t plugin;

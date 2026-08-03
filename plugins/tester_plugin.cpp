@@ -5,7 +5,7 @@
 #include <thread>
 #include <map>
 #include <algorithm>
-
+#include <queue>
 #include <yaml-cpp/yaml.h>
 
 #include "tester_plugin.hpp"
