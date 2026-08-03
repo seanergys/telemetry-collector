@@ -3,11 +3,15 @@
 #include <ctime>
 #include <iostream>
 #include <thread>
-#include <unordered_map>
+#include <map>
+#include <algorithm>
+
 #include <yaml-cpp/yaml.h>
 
 #include "tester_plugin.hpp"
 #include "../connection.hpp"
+
+static std::map<std::string, seanerbus::msg::TimeValueV1*> sensor_values = {};
 
 // Global plugin instance
 plugin_interface_t plugin =
@@ -27,11 +31,6 @@ plugin_interface_t plugin =
 
 void* sensor_sense(void* sensor);
 
-// Global sensor values map for the sense function
-static std::unordered_map<std::string, double> sensor_values;
-
-// Global running flag for the run function
-static std::atomic<bool> running(true);
 
 void* tester_create(void)
 {
@@ -49,7 +48,184 @@ bool tester_destroy(void* runtime)
 bool tester_init_sensors(void* runtime)
 {
     // Get the plugin config from runtime
-    YAML::Node* yaml = static_cast<YAML::Node*>(((runtime_t*)runtime)->config);
+
+    for (const auto& [uuid, conf] : configs){
+        sensor_t *sensor = new sensor_t();
+
+        // Set the sensor configuration and sense function
+        sensor->conf = conf;
+        sensor->sense = sensor_sense;
+
+        // Add to the global sensors map using UUID as key
+        ::sensors[uuid] = sensor;
+        sensor_values[conf->uuid] = new seanerbus::msg::TimeValueV1(0,0.0);
+    }
+
+    return true; // We're using the global map, not returning a pointer to sensors
+}
+
+bool tester_finit(void* runtime)
+{
+
+    // Clear the map
+    for (auto& pair : ::configs)
+    {
+        sensor_config_t* conf = pair.second;
+        if (conf)
+        {
+            delete conf->uuid;
+            delete conf->topic;
+            delete conf->unit;
+            delete conf;
+        }
+    }
+
+    // Clean up the global sensors map
+    for (auto& pair : ::sensors)
+    {
+        sensor_config_t* conf = pair.second->conf;
+        if (conf)
+        {
+            delete conf->uuid;
+            delete conf->topic;
+            delete conf->unit;
+            delete conf;
+        }
+
+        sensor_t* sensor = pair.second;
+        if (sensor)
+            delete sensor;
+
+    }
+    ::sensors.clear();
+    ::configs.clear();
+
+
+    for (auto& pair : sensor_values)
+    {
+        if (pair.second)
+            delete pair.second;
+    }
+    // Clear the sensor_values map as well
+    sensor_values.clear();
+
+    // Reset num_sensors in runtime
+    //if (runtime) {
+    //    ((runtime_t*)runtime)->num_sensors = 0;
+    //}
+
+    return true;
+}
+
+// Sense function with correct signature
+void* sensor_sense(void* sensor)
+{
+    sensor_t* s = (sensor_t*)sensor;
+    sensor_config_t* conf = s->conf;
+
+    seanerbus::msg::TimeValueV1 *tv = sensor_values[conf->uuid];
+
+    // Print the sensor data
+    std::cout << "[" << conf->uuid << "] value=" << tv->value++
+              << ", timestamp=" << tv->time++ << std::endl;
+    return &tv;
+}
+
+struct ScheduledSensor {
+    std::chrono::steady_clock::time_point next_run;
+    sensor_t* sensor;
+};
+struct CompareNextRun
+{
+    bool operator()(const ScheduledSensor& a,
+                    const ScheduledSensor& b) const
+    {
+        return a.next_run > b.next_run;
+    }
+};
+
+void* tester_run(void* runtime)
+{
+
+    std::priority_queue<
+        ScheduledSensor,
+        std::vector<ScheduledSensor>,
+        CompareNextRun> queue;
+
+    for (auto& s : ::sensors)
+    {
+        queue.push({
+            std::chrono::steady_clock::now(),
+            s.second
+        });
+    }
+
+    while (((runtime_t*)runtime)->running)
+    {
+        auto now = std::chrono::steady_clock::now();
+
+        // Sleep until the next sensor is due.
+        if (queue.top().next_run > now)
+            std::this_thread::sleep_until(queue.top().next_run);
+
+        now = std::chrono::steady_clock::now();
+
+
+        // Process every sensor that's ready.
+        while (!queue.empty() && queue.top().next_run <= now)
+        {
+            auto s = queue.top();
+            queue.pop();
+
+            seanerbus::msg::TimeValueV1 tv = *(seanerbus::msg::TimeValueV1*) s.sensor->sense(s.sensor);
+            //seanerbus::msg::TimeValueV1 *tv = (seanerbus::msg::TimeValueV1*) sensor_sense(s.sensor);
+            test_publish(tv, s.sensor->conf->uuid);
+
+            s.next_run += s.sensor->conf->interval_ms;
+            queue.push(s);
+        }
+    }
+
+    /*
+
+    while (((runtime_t*)runtime)->running)
+    {
+        for (auto& sensor : ::sensors)
+        {
+            //{
+            //    seanerbus::msg::TimeValueV1 tv = *(seanerbus::msg::TimeValueV1*) sensor.second->sense(sensor.second);
+            //    test_publish(tv, sensor.second->conf->uuid);
+            //}
+
+            {
+                seanerbus::msg::TimeValueV1 *tv = (seanerbus::msg::TimeValueV1*) sensor_sense(sensor.second);
+                test_publish(*tv, sensor.second->conf->uuid);
+            }
+        }
+
+        auto it = sensors.begin();
+        if (it != sensors.end()) {
+            // note this is not doing the right thing, we better imlement the groups first to avoid
+            // the  commplex scheduling logic here
+            std::this_thread::sleep_for(std::chrono::milliseconds(1000));//it->second.conf->interval_ms));
+        } else {
+            // If no sensors, sleep for a default interval
+            std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+        }
+
+    }
+    */
+
+    return nullptr;
+}
+
+void* tester_configurator(void* configPtr)
+{
+    // This function receives the YAML object from the plugin manager
+    // and returns a plugin-specific config object
+
+    // Cast the void* back to YAML::Node*
+    YAML::Node* yaml = static_cast<YAML::Node*>(configPtr);
 
     // Clear any existing sensors in the map
 
@@ -58,8 +234,6 @@ bool tester_init_sensors(void* runtime)
     {
     for (const auto& node : (*yaml)["sensors"])
     {
-            sensor_t *sensor = new sensor_t();
-
             // Create a sensor_config_t for this sensor
             sensor_config_t* conf = new sensor_config_t();
 
@@ -80,157 +254,12 @@ bool tester_init_sensors(void* runtime)
             // Set interval
             conf->interval_ms = std::chrono::milliseconds(node["interval_ms"].as<uint64_t>());
 
-            // Set the sensor configuration and sense function
-            sensor->conf = conf;
-            sensor->sense = sensor_sense;
-
             // Add to the global sensors map using UUID as key
-            ::sensors[conf->uuid] = sensor;
+            ::configs[conf->uuid] = conf;
         }
     }
 
-    // Store the number of sensors in runtime for reference
-
-    return true; // We're using the global map, not returning a pointer to sensors
-}
-
-bool tester_finit(void* runtime)
-{
-    // Clean up the global sensors map
-    for (auto& pair : ::sensors)
-    {
-        sensor_config_t* conf = pair.second->conf;
-        if (conf)
-        {
-            delete conf->uuid;
-            delete conf->topic;
-            delete conf->unit;
-            delete conf;
-        }
-
-        sensor_t* sensor = pair.second;
-        if (sensor)
-            delete sensor;
-
-    }
-
-    // Clear the map
-    ::sensors.clear();
-
-    // Clear the sensor_values map as well
-    sensor_values.clear();
-
-    // Reset num_sensors in runtime
-    //if (runtime) {
-    //    ((runtime_t*)runtime)->num_sensors = 0;
-    //}
-
-    return true;
-}
-
-// Sense function with correct signature
-void* sensor_sense(void* sensor)
-{
-    sensor_t* s = (sensor_t*)sensor;
-    sensor_config_t* conf = s->conf;
-
-    // Generate a value (incrementing counter)
-    double value = ++sensor_values[conf->uuid];
-
-    // Print the sensor data
-    std::cout << "[" << conf->uuid << "] value=" << value
-              << ", timestamp=" << std::time(nullptr) << std::endl;
-    return nullptr;
-}
-
-
-
-void* tester_run(void* runtime)
-{
-
-    seanerbus::msg::TimeValueV1 tv (0,0.0);
-
-    while (((runtime_t*)runtime)->running)
-    {
-        for (auto& sensor : ::sensors)
-        {
-            sensor_config_t* conf = sensor.second->conf;
-
-            //seanerbus::msg::TimeValueV1 tv = getPayload(conf->uuid);
-            {
-                tv.time++;
-                tv.value++;
-            }
-            test_publish(tv, conf->uuid);
-        }
-
-        auto it = sensors.begin();
-        if (it != sensors.end()) {
-            // note this is not doing the right thing, we better imlement the groups first to avoid
-            // the  commplex scheduling logic here
-            std::this_thread::sleep_for(std::chrono::milliseconds(1000));//it->second.conf->interval_ms));
-        } else {
-            // If no sensors, sleep for a default interval
-            std::this_thread::sleep_for(std::chrono::milliseconds(1000));
-        }
-
-    }
-
-    return nullptr;
-}
-
-void* tester_configurator(void* configPtr)
-{
-    // This function receives the YAML object from the plugin manager
-    // and returns a plugin-specific config object
-
-    // Cast the void* back to YAML::Node*
-    YAML::Node* yaml = static_cast<YAML::Node*>(configPtr);
-    // Create a plugin-specific config object using tester_config_t
-
-    /*
-    tester_config_t* config = new tester_config_t();
-
-    // Load the config values from the YAML object
-    config->name = new char[(*yaml)["name"].as<std::string>().size() + 1];
-    std::memcpy(
-        config->name,
-        (*yaml)["name"].as<std::string>().c_str(),
-        (*yaml)["name"].as<std::string>().size() + 1);
-
-    config->uuid = new char[(*yaml)["uuid"].as<std::string>().size() + 1];
-    std::memcpy(
-        config->uuid,
-        (*yaml)["uuid"].as<std::string>().c_str(),
-        (*yaml)["uuid"].as<std::string>().size() + 1);
-
-    for (const auto& node : (*yaml)["sensors"])
-    {
-        sensor_config_t sensor{};
-
-        sensor.uuid = new char[node["uuid"].as<std::string>().size() + 1];
-        std::memcpy(
-            sensor.uuid,
-            node["uuid"].as<std::string>().c_str(),
-            node["uuid"].as<std::string>().size() + 1);
-
-        sensor.topic = new char[node["topic"].as<std::string>().size() + 1];
-        std::memcpy(
-            sensor.topic,
-            node["topic"].as<std::string>().c_str(),
-            node["topic"].as<std::string>().size() + 1);
-
-        sensor.interval_ms = node["interval_ms"].as<uint64_t>();
-
-        sensor.unit = new char[node["unit"].as<std::string>().size() + 1];
-        std::memcpy(
-            sensor.unit,
-            node["unit"].as<std::string>().c_str(),
-            node["unit"].as<std::string>().size() + 1);
-
-        config->sensors.push_back(sensor);
-    }
-    */
+    // Since the configurator returns a YAML::Node*, we need to delete it
 
     return yaml;
 }
@@ -241,10 +270,5 @@ bool tester_free_config(void* config)
     {
         return false;
     }
-
-    // Since the configurator returns a YAML::Node*, we need to delete it
-    YAML::Node* yaml = static_cast<YAML::Node*>(config);
-    delete yaml;
-
     return true;
 }

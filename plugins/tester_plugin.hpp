@@ -7,7 +7,7 @@
 #include <vector>
 
 #include "../plugin.hpp"
-#include "../sensor.hpp"
+#include "../types.hpp"
 
 /* lifecycle */
 void* tester_create(void);
@@ -29,6 +29,7 @@ typedef struct sensor_config
     char* unit;
 } sensor_config_t;
 
+std::map<std::string, sensor_config_t*> configs; // uuid -> configs
 std::map<std::string, sensor_t*> sensors; // uuid -> sensors
 
 /* exported plugin descriptor */
