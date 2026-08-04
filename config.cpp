@@ -4,7 +4,7 @@
 #include "plugin.hpp"
 #include "config.hpp"
 
-std::vector<config_t> load_config(const char* filename)
+std::vector<config_t> load_tc_config(const char* filename)
 {
     std::vector<config_t> plugin_configs;
 

@@ -55,7 +55,7 @@ int main(
         signal_handler);
 
     auto plugin_configs =
-        load_config(argv[1]);
+        load_tc_config(argv[1]);
 
     for (const auto &conf : plugin_configs)
     {

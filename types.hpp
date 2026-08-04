@@ -4,10 +4,10 @@
 typedef void* sense_t(void*);
 typedef void* act_t(void*);
 
-typedef struct sensor_config sensor_config_t;
+typedef struct sensor_attribute sensor_attribute_t;
 typedef struct sensor
 {
-    sensor_config_t* conf;
+    sensor_attribute_t* conf;
     sense_t* sense;
 } sensor_t;
 
