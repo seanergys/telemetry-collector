@@ -21,7 +21,7 @@ void* sysfs_run(void* runtime);
 void* sysfs_configurator(void* config);
 bool  sysfs_free_config(void* config);
 
-typedef struct sensor_config
+typedef struct sensor_attribute
 {
     char* uuid;
     char* topic;
@@ -32,9 +32,9 @@ typedef struct sensor_config
     char* filter;
     double factor = 1;
     double offset = 0;
-} sensor_config_t;
+} sensor_attribute_t;
 
-std::map<std::string, sensor_config_t*> configs; // uuid -> configs
+std::map<std::string, sensor_attribute_t*> configs; // uuid -> configs
 std::map<std::string, sensor_t*> sensors; // uuid -> sensors
 
 

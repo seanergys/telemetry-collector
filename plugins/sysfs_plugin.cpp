@@ -54,12 +54,12 @@ bool sysfs_destroy(void *runtime)
 
 
 static void setCharField(char*& field, const std::string& value) {
-    delete[] field;             
+    delete[] field;
     field = new char[value.size() + 1];
     std::memcpy(field, value.c_str(), value.size() + 1);
 }
 
-void applyFields(const YAML::Node& node, sensor_config_t* conf) {
+void applyFields(const YAML::Node& node, sensor_attribute_t* conf) {
     if (!node) return;
 
     if (node["uuid"])           setCharField(conf->uuid,    node["uuid"].as<std::string>());
@@ -72,10 +72,10 @@ void applyFields(const YAML::Node& node, sensor_config_t* conf) {
     if (node["factor"])         conf->factor     = node["factor"].as<double>();
     if (node["offset"])         conf->offset     = node["offset"].as<double>();
 
-   
+
 }
 
-bool applyTemplateConfigs(const YAML::Node& node, const YAML::Node& templates,sensor_config_t* conf) {
+bool applyTemplateConfigs(const YAML::Node& node, const YAML::Node& templates,sensor_attribute_t* conf) {
     if (!node["template"] || !templates) {
         return false;
     }
@@ -105,8 +105,8 @@ bool sysfs_init_sensors(void *runtime)
         ::sensors[uuid] = sensor;
         sensor_values[conf->uuid] = new seanerbus::msg::TimeValueV1(0,0.0);
     }
-    
-   
+
+
     return true; // We're using the global map, not returning a pointer to sensors
 
 }
@@ -116,7 +116,7 @@ bool sysfs_finit(void *runtime)
 {
     for (auto& pair : ::configs)
     {
-        sensor_config_t* conf = pair.second;
+        sensor_attribute_t* conf = pair.second;
         if (conf)
         {
             delete conf->uuid;
@@ -129,7 +129,7 @@ bool sysfs_finit(void *runtime)
     // Clean up the global sensors map
     for (auto& pair : ::sensors)
     {
-        sensor_config_t* conf = pair.second->conf;
+        sensor_attribute_t* conf = pair.second->conf;
         if (conf)
         {
             delete conf->uuid;
@@ -172,7 +172,7 @@ double _applyFactorOffset(double value, double factor, double offset) {
     return (value * factor) + offset;
 }
 
-void getPayload(sensor_config_t* conf,seanerbus::msg::TimeValueV1 *tv)
+void getPayload(sensor_attribute_t* conf,seanerbus::msg::TimeValueV1 *tv)
 {
 
     FILE* fp = fopen(conf->path, "r");
@@ -209,25 +209,25 @@ void getPayload(sensor_config_t* conf,seanerbus::msg::TimeValueV1 *tv)
     }
 
     std::cout << "sensor path" << conf->path << " value " << std::stod(valueStr) <<" factor" << conf->factor << " offset"<< conf->offset << std::endl;
-    
+
     tv->time = getTimestamp();
     tv->value = _applyFactorOffset(std::stod(valueStr), conf->factor, conf->offset);
-    
+
 }
 
 // Sense function with correct signature
 void *sensor_sense(void *sensor)
 {
     sensor_t *s = (sensor_t *)sensor;
-    sensor_config_t *conf = s->conf;
+    sensor_attribute_t *conf = s->conf;
 
     seanerbus::msg::TimeValueV1 *tv = sensor_values[conf->uuid];
-    
+
     getPayload(conf, tv);
-    
+
     // Print the sensor data
     //std::cout << "[" << conf->uuid << "] value=" << tv->value<< ", timestamp=" << tv->time << std::endl;
-    
+
     return tv;
 }
 
@@ -281,10 +281,10 @@ void *sysfs_run(void *runtime)
         {
             auto s = queue.top();
             queue.pop();
-            
-            seanerbus::msg::TimeValueV1 tv = *(seanerbus::msg::TimeValueV1*) s.sensor->sense(s.sensor);
 
-            //std::cout << tv.value<< ", timestamp=" << tv.time << std::endl;
+            seanerbus::msg::TimeValueV1 *tv = (seanerbus::msg::TimeValueV1*) s.sensor->sense(s.sensor);
+
+            //std::cout << tv->value<< ", timestamp=" << tv->time << std::endl;
             test_publish(tv, s.sensor->conf->uuid);
 
             s.next_run += s.sensor->conf->interval_ms;
@@ -316,7 +316,7 @@ void *sysfs_configurator(void *configPtr)
 
     // Load sensor groups from the YAML config
     for (const auto& groupEntry : config["sensor_groups"]) {
-        
+
         std::string groupName = groupEntry.first.as<std::string>();
         const YAML::Node& group = groupEntry.second;
 
@@ -328,23 +328,23 @@ void *sysfs_configurator(void *configPtr)
 
         for (const auto& item : group["sensors"]){
 
-            // Create a sensor_config_t for this sensor
-            sensor_config_t *conf = new sensor_config_t();
-            
+            // Create a sensor_attribute_t for this sensor
+            sensor_attribute_t *conf = new sensor_attribute_t();
+
             //apply group-level template attr
             if (templates){
                 applyTemplateConfigs(group, templates, conf);
             }
-            
+
             // apply group-level config attr
             applyFields(group, conf);
 
             //apply sensor-level config attr
             applyFields(item, conf);
-            
+
             // Add to the global sensors map using UUID as key
             ::configs[conf->uuid] = conf;
-            
+
         }
     }
 

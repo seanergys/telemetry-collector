@@ -70,7 +70,7 @@ bool tester_finit(void* runtime)
     // Clear the map
     for (auto& pair : ::configs)
     {
-        sensor_config_t* conf = pair.second;
+        sensor_attribute_t* conf = pair.second;
         if (conf)
         {
             delete conf->uuid;
@@ -83,7 +83,7 @@ bool tester_finit(void* runtime)
     // Clean up the global sensors map
     for (auto& pair : ::sensors)
     {
-        sensor_config_t* conf = pair.second->conf;
+        sensor_attribute_t* conf = pair.second->conf;
         if (conf)
         {
             delete conf->uuid;
@@ -121,14 +121,14 @@ bool tester_finit(void* runtime)
 void* sensor_sense(void* sensor)
 {
     sensor_t* s = (sensor_t*)sensor;
-    sensor_config_t* conf = s->conf;
+    sensor_attribute_t* conf = s->conf;
 
     seanerbus::msg::TimeValueV1 *tv = sensor_values[conf->uuid];
 
     // Print the sensor data
     std::cout << "[" << conf->uuid << "] value=" << tv->value++
               << ", timestamp=" << tv->time++ << std::endl;
-    return &tv;
+    return tv;
 }
 
 struct ScheduledSensor {
@@ -177,8 +177,9 @@ void* tester_run(void* runtime)
             auto s = queue.top();
             queue.pop();
 
-            seanerbus::msg::TimeValueV1 tv = *(seanerbus::msg::TimeValueV1*) s.sensor->sense(s.sensor);
+            seanerbus::msg::TimeValueV1 *tv = (seanerbus::msg::TimeValueV1*) s.sensor->sense(s.sensor);
             //seanerbus::msg::TimeValueV1 *tv = (seanerbus::msg::TimeValueV1*) sensor_sense(s.sensor);
+
             test_publish(tv, s.sensor->conf->uuid);
 
             s.next_run += s.sensor->conf->interval_ms;
@@ -234,8 +235,8 @@ void* tester_configurator(void* configPtr)
     {
     for (const auto& node : (*yaml)["sensors"])
     {
-            // Create a sensor_config_t for this sensor
-            sensor_config_t* conf = new sensor_config_t();
+            // Create a sensor_attribute_t for this sensor
+            sensor_attribute_t* conf = new sensor_attribute_t();
 
             // Copy UUID
             std::string uuid_str = node["uuid"].as<std::string>();

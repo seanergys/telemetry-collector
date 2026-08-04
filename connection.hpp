@@ -19,7 +19,7 @@ void destroy_seanerbus_connection(seanerbus::client::Connection* conn){
     }
 }
 
-void tc_publish(seanerbus::msg::TimeValueV1 &tv, std::string &uuid, seanerbus::client::Connection *conn)
+void tc_publish(seanerbus::msg::TimeValueV1 *tv, std::string &uuid, seanerbus::client::Connection *conn)
 {
     if (!conn) {
         std::cerr << "Connection is null, skipping publish for uuid: " << uuid << std::endl;
@@ -28,14 +28,14 @@ void tc_publish(seanerbus::msg::TimeValueV1 &tv, std::string &uuid, seanerbus::c
 
     try {
         auto addr = seanerbus::Address{seanerbus::Uuid{uuid}};
-        conn->publish(addr, tv.to_capnp());
+        conn->publish(addr, tv->to_capnp());
     } catch (const std::exception& e) {
         std::cerr << "Failed to publish for uuid " << uuid << ": " << e.what() << std::endl;
     }
 }
 
-void test_publish (seanerbus::msg::TimeValueV1 tv, std::string uuid){
-    std::cout << "[" << uuid << "]: timestamp=" << tv.time << ", value=" << tv.value << '\n';
+void test_publish (seanerbus::msg::TimeValueV1* tv, std::string uuid){
+    std::cout << "[" << uuid << "]: timestamp=" << tv->time << ", value=" << tv->value << '\n';
     seanerbus::client::Connection* conn = create_seanerbus_connection();
     tc_publish(tv, uuid, conn);
     destroy_seanerbus_connection(conn);
