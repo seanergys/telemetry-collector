@@ -302,9 +302,6 @@ int64_t get(sensor_attribute_t* conf) {
     const oid *const OID = conf->_oid;
     size_t OIDLen = conf->_oidLen;
 
-    std::cout << "OID: " << OID << std::endl;
-    std::cout << "OIDLen: " << OIDLen << std::endl;
-
 	struct snmp_pdu *     pdu, *response;
 	struct variable_list *vp;
 	int                   status;
@@ -321,7 +318,6 @@ int64_t get(sensor_attribute_t* conf) {
 	status = snmp_sess_synch_response(conf->snmpSessp, pdu, &response);
 
     vp = response->variables;
-    std::cout << *vp->val.integer << std::endl;
 
 	if (status == STAT_SUCCESS && response->errstat == SNMP_ERR_NOERROR) {
 		vp = response->variables;
@@ -383,8 +379,7 @@ void* sensor_sense(void* sensor)
     tv->time = getTimestamp();
 
     // Print the sensor data
-    std::cout << "[" << conf->uuid << "] value=" << tv->value
-              << ", timestamp=" << tv->time << std::endl;
+    //std::cout << "[" << conf->uuid << "] value=" << tv->value<< ", timestamp=" << tv->time << std::endl;
     return tv;
 }
 
@@ -435,7 +430,6 @@ void* snmp_run(void* runtime)
             queue.pop();
 
             seanerbus::msg::TimeValueV1 *tv = (seanerbus::msg::TimeValueV1*) s.sensor->sense(s.sensor);
-            //seanerbus::msg::TimeValueV1 *tv = (seanerbus::msg::TimeValueV1*) sensor_sense(s.sensor);
 
             test_publish(tv, s.sensor->conf->uuid);
 

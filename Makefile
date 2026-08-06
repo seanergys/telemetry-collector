@@ -23,7 +23,6 @@ else
 	endif
 endif
 
-LDLIBS_SNMP:= -L/usr/local/opt/net-snmp/lib/ -lnetsnmp -lnetsnmpagent
 LDLIBS_PLUGINS := $(LDLIBS_SNMP)
 
 COLLECTOR := telemetry-collector
