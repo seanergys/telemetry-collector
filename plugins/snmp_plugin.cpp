@@ -10,6 +10,7 @@
 #include <string>
 #include <net-snmp/net-snmp-config.h>
 #include <net-snmp/net-snmp-includes.h>
+#include <net-snmp/mib_api.h>
 
 #include "snmp_plugin.hpp"
 #include "../connection.hpp"
@@ -34,7 +35,6 @@ plugin_interface_t plugin =
 
 void* sensor_sense(void* sensor);
 
-
 void* snmp_create(void)
 {
     // Return a pointer to the plugin_interface_t object as the instance
@@ -48,11 +48,27 @@ bool snmp_destroy(void* runtime)
     false;
 }
 
-
 static void setCharField(char*& field, const std::string& value) {
     delete[] field;
     field = new char[value.size() + 1];
     std::memcpy(field, value.c_str(), value.size() + 1);
+}
+
+void setVersion(const std::string &version, sensor_attribute_t* conf) {
+    int vers = stoi(version);
+    switch (vers) {
+        case 1:
+            conf->version = SNMP_VERSION_1;
+            break;
+        case 2:
+            conf->version = SNMP_VERSION_2c;
+            break;
+        case 3:
+            conf->version = SNMP_VERSION_3;
+            break;
+        default:
+            conf->version = -1;
+    }
 }
 
 
@@ -78,11 +94,10 @@ void applyFields(const YAML::Node& node, sensor_attribute_t* conf) {
     if (node["authProtoLen"])     conf->authProtoLen = node["authProtoLen"].as<size_t>();
     if (node["privProtoLen"])     conf->privProtoLen = node["privProtoLen"].as<size_t>();
     if (node["securityLevel"])     conf->securityLevel = node["securityLevel"].as<int>();
-    if (node["version"])     conf->version = node["version"].as<std::string>();
-
-    if (node["type"])     setCharField(conf->type,    node["type"].as<std::string>());
-    if (node["oid_prefix"])     conf->oid_prefix,    node["oid_prefix"].as<std::string>();
-    if (node["oid_suffix"])     conf->oid_suffix,    node["oid_suffix"].as<std::string>();
+    if (node["version"])        setVersion(node["version"].as<std::string>(), conf);
+    if (node["type"])            setCharField(conf->type,    node["type"].as<std::string>());
+    if (node["oid_prefix"])     conf->oid_prefix = node["oid_prefix"].as<std::string>();
+    if (node["oid_suffix"])     conf->oid_suffix = node["oid_suffix"].as<std::string>();
 }
 
 bool applyTemplateConfigs(const YAML::Node& node, const YAML::Node& templates,sensor_attribute_t* conf) {
@@ -102,25 +117,100 @@ bool applyTemplateConfigs(const YAML::Node& node, const YAML::Node& templates,se
     return true;
 }
 
+void setOID(sensor_attribute_t* conf) {
+    const std::string tmp_oid = conf->oid_prefix + conf->oid_suffix;
 
-/*
-void setOID(const std::string &oid, sensor_attribute_t* conf) {
+    //std::cerr << conf->oid_prefix  << " " << conf->oid_suffix << std::endl;
+
     size_t newoidnamelen = MAX_OID_LEN;
-    if (read_objid(oid.c_str(), conf->_oid, &newoidnamelen)) {
+    if (read_objid(tmp_oid.c_str(), conf->_oid, &newoidnamelen)) {
         conf->_oidLen = newoidnamelen;
     } else {
         conf->_oidLen = 0;
-        // LOG(error) << _name << ": Cannot convert OID string: " << oid;
+        std::cerr << tmp_oid << " " << conf->_oid << ": Cannot convert OID string: " << tmp_oid << std::endl;
     }
 }
-*/
+
+void setup_snmp_session(sensor_attribute_t* conf) {
+
+	snmp_sess_init(&conf->snmpSession);
+	int   liberr, syserr;
+	char *errstr;
+	snmp_error(&conf->snmpSession, &liberr, &syserr, &errstr);
+	if (liberr || syserr) {
+		std::cerr << "SNMP: Error initializing session: " + std::string(errstr);
+	}
+	free(errstr);
+	conf->snmpSession.version = conf->version;
+	conf->snmpSession.peername = strdup(conf->connection);
+
+	if ((conf->version == SNMP_VERSION_1) || (conf->version == SNMP_VERSION_2c)) {
+		conf->snmpSession.community = (u_char *)strdup(conf->snmpCommunity.c_str());
+		conf->snmpSession.community_len = conf->snmpCommunity.length();
+	} else if (conf->version == SNMP_VERSION_3) {
+		conf->snmpSession.community = NULL;
+		conf->snmpSession.community_len = 0;
+
+		/* set the SNMPv3 user name */
+		conf->snmpSession.securityName = strdup(conf->username.c_str());
+		conf->snmpSession.securityNameLen = conf->username.length();
+
+		/* set the security level */
+		conf->snmpSession.securityLevel = conf->securityLevel;
+
+		if (conf->snmpSession.securityLevel == SNMP_SEC_LEVEL_NOAUTH) {
+			// no authentication, no privacy
+			// nothing to do
+		} else if (conf->snmpSession.securityLevel == SNMP_SEC_LEVEL_AUTHNOPRIV || conf->snmpSession.securityLevel == SNMP_SEC_LEVEL_AUTHPRIV) {
+			// authentication...
+			conf->snmpSession.securityAuthKeyLen = USM_AUTH_KU_LEN;
+
+			// set the authentication method
+			conf->snmpSession.securityAuthProto = conf->authProto;
+			conf->snmpSession.securityAuthProtoLen = conf->authProtoLen; // sizeof(_authProto)/sizeof(oid);
+
+			/* set the authentication key to a hashed version of our
+			_authKey (which must be at least 8 characters long) */
+			if (generate_Ku(conf->snmpSession.securityAuthProto, conf->snmpSession.securityAuthProtoLen, (u_char *)conf->authKey.c_str(), conf->authKey.length(),
+					conf->snmpSession.securityAuthKey, &conf->snmpSession.securityAuthKeyLen) != SNMPERR_SUCCESS) {
+				std::cerr << "SNMP: Error generating Ku from authentication key";
+			}
+
+			if (conf->snmpSession.securityLevel == SNMP_SEC_LEVEL_AUTHPRIV) {
+				//...with privacy
+				conf->snmpSession.securityPrivKeyLen = USM_PRIV_KU_LEN;
+
+				// set the privacy method (aka encryption)
+				conf->snmpSession.securityPrivProto = conf->privProto;
+				conf->snmpSession.securityPrivProtoLen = conf->privProtoLen;
+
+				/* set the privacy key to a hashed version of our
+				_privKey (which must be at least 8 characters long) */
+				if (generate_Ku(conf->snmpSession.securityAuthProto, conf->snmpSession.securityAuthProtoLen, (u_char *)conf->privKey.c_str(),
+						conf->privKey.length(), conf->snmpSession.securityPrivKey, &conf->snmpSession.securityPrivKeyLen) != SNMPERR_SUCCESS) {
+					std::cerr << "SNMP: Error generating Ku from privacy key";
+				}
+			}
+		} else {
+			std::cerr << "SNMP security level unknown!";
+		}
+	} else {
+		std::cerr << "SNMP Version " << conf->version << " not supported!";
+	}
+}
 
 bool snmp_init_sensors(void* runtime)
 {
+
+    init_snmp("SNMPplugin");
+
     // Get the plugin config from runtime
 
     for (const auto& [uuid, conf] : configs){
         sensor_t *sensor = new sensor_t();
+        setOID(conf);
+
+        setup_snmp_session(conf);
 
         // Set the sensor configuration and sense function
         sensor->conf = conf;
@@ -187,6 +277,101 @@ bool snmp_finit(void* runtime)
     return true;
 }
 
+bool open (sensor_attribute_t* conf) {
+	conf->snmpSessp = snmp_sess_open(&conf->snmpSession);
+	int   liberr, syserr;
+	char *errstr;
+	snmp_error(&conf->snmpSession, &liberr, &syserr, &errstr);
+	if (liberr || syserr) {
+		std::cerr << "SNMP-open: " << errstr;
+		free(errstr);
+		return false;
+	}
+	free(errstr);
+	return true;
+}
+
+void close (sensor_attribute_t* conf) {
+	if (conf->snmpSessp) {
+		snmp_sess_close(conf->snmpSessp);
+		conf->snmpSessp = NULL;
+	}
+}
+
+int64_t get(sensor_attribute_t* conf) {
+    const oid *const OID = conf->_oid;
+    size_t OIDLen = conf->_oidLen;
+
+    std::cout << "OID: " << OID << std::endl;
+    std::cout << "OIDLen: " << OIDLen << std::endl;
+
+	struct snmp_pdu *     pdu, *response;
+	struct variable_list *vp;
+	int                   status;
+	int64_t               ret = 0;
+
+	if (!conf->snmpSessp) {
+		open(conf);
+	}
+
+	pdu = snmp_pdu_create(SNMP_MSG_GET);
+
+	snmp_add_null_var(pdu, OID, OIDLen);
+
+	status = snmp_sess_synch_response(conf->snmpSessp, pdu, &response);
+
+    vp = response->variables;
+    std::cout << *vp->val.integer << std::endl;
+
+	if (status == STAT_SUCCESS && response->errstat == SNMP_ERR_NOERROR) {
+		vp = response->variables;
+		if (vp) {
+			switch (vp->type) {
+				case ASN_INTEGER:
+				case ASN_COUNTER:
+				case ASN_GAUGE:
+				case ASN_TIMETICKS:
+				case ASN_UINTEGER:
+					ret = *vp->val.integer;
+					break;
+				default:
+					std::cerr << "Non-Integer SNMP data received (type=" << std::to_string((int)vp->type) << "):";
+					char buf[1024];
+					while (vp) {
+						snprint_variable(buf, sizeof(buf), vp->name, vp->name_length, vp);
+						std::cerr << (&conf->snmpSession)->peername << ": " << buf;
+						vp = vp->next_variable;
+					}
+			}
+		}
+	} else {
+		std::string errorStr;
+		if (status == STAT_SUCCESS) {
+			errorStr = "Error in packet: " + std::string(snmp_errstring(response->errstat));
+		} else {
+			char *err;
+			snmp_sess_error(conf->snmpSessp, NULL, NULL, &err);
+			errorStr = "SNMP-get: " + std::string(err);
+			free(err);
+		}
+
+		throw std::runtime_error(errorStr);
+	}
+
+	if (response) {
+		snmp_free_pdu(response);
+	}
+	return ret;
+}
+
+uint64_t getTimestamp()
+{
+    return static_cast<uint64_t>(
+        std::chrono::duration_cast<std::chrono::milliseconds>(
+            std::chrono::system_clock::now().time_since_epoch())
+            .count());
+}
+
 // Sense function with correct signature
 void* sensor_sense(void* sensor)
 {
@@ -194,10 +379,12 @@ void* sensor_sense(void* sensor)
     sensor_attribute_t* conf = s->conf;
 
     seanerbus::msg::TimeValueV1 *tv = sensor_values[conf->uuid];
+    tv->value = get (conf);
+    tv->time = getTimestamp();
 
     // Print the sensor data
-    std::cout << "[" << conf->uuid << "] value=" << tv->value++
-              << ", timestamp=" << tv->time++ << std::endl;
+    std::cout << "[" << conf->uuid << "] value=" << tv->value
+              << ", timestamp=" << tv->time << std::endl;
     return tv;
 }
 

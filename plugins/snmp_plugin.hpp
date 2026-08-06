@@ -44,7 +44,7 @@ typedef struct sensor_attribute
     size_t authProtoLen;
     size_t privProtoLen;
     int securityLevel;
-    std::string version;
+    long int version;
     struct snmp_session snmpSession;
     void *snmpSessp;
 
