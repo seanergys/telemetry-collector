@@ -23,6 +23,9 @@ else
 	endif
 endif
 
+LDLIBS_SNMP:= -L/usr/local/opt/net-snmp/lib/ -lnetsnmp -lnetsnmpagent
+LDLIBS_PLUGINS := $(LDLIBS_SNMP)
+
 COLLECTOR := telemetry-collector
 
 COMMON_OBJS := plugin.o pluginManager.o config.o
@@ -43,7 +46,7 @@ $(COLLECTOR): telemetry-collector.o $(COMMON_OBJS)
 	$(CXX) $^ -o $@ $(LDLIBS)
 
 plugins/%.$(LIB_EXT): plugins/%_plugin.cpp $(COMMON_OBJS)
-	$(CXX) $(CXXFLAGS) $(LIBFLAGS)  $^ -o $@ $(LDLIBS)
+	$(CXX) $(CXXFLAGS) $(LIBFLAGS)  $^ -o $@ $(LDLIBS) $(LDLIBS_PLUGINS)
 
 tests/plugins/%.$(LIB_EXT): tests/plugins/%_plugin.cpp $(COMMON_OBJS)
 	$(CXX) $(CXXFLAGS) $(LIBFLAGS)  $^ -o $@ $(LDLIBS)
