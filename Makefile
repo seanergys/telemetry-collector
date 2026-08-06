@@ -8,15 +8,19 @@ ifeq ($(UNAME_S),Darwin)
 	LDLIBS := -L/usr/local/opt/yaml-cpp/lib -lyaml-cpp -L/usr/local/opt/capnp/lib/ -lcapnp -lkj -L/Users/di75gix/codes/seanergys/seanerbus/cpp_examples/install/lib -lseanerbus
 	GTEST_LIBS := -L/usr/local/Cellar/googletest/1.17.0/lib -lgtest -lgtest_main -pthread
 	CXXFLAGS :=-I/usr/local/opt/capnp/include/ -I/usr/local/opt/yaml-cpp/include/ -I/Users/di75gix/codes/seanergys/seanerbus/cpp_examples/install/include -I/usr/local/Cellar/googletest/1.17.0/include -std=c++20 -Wall -Wextra -Wpedantic -O0 -g
+
+	LDLIBS_SNMP:= -L/usr/local/opt/net-snmp/lib/ -lnetsnmp -lnetsnmpagent
 else
 	LIB_EXT := so
 	LIBFLAGS := -shared -fPIC
 	LDLIBS := -L/home/di93zad/seanergys/telemetry-collector/install/capnp-0.8/lib/  -lcapnp  -L/home/di93zad/seanergys/telemetry-collector/install/yaml-cpp/lib64/ -lyaml-cpp -lkj -lpthread -ldl -L/home/di93zad/seanergys/dataplane/seanerbus/install_seanerbus2/lib64 -lseanerbus
 	GTEST_LIBS := -L/usr/local/Cellar/googletest/1.17.0/lib -lgtest -lgtest_main -pthread
-	CXXFLAGS :=-I/home/di93zad/seanergys/dataplane/seanerbus/install_seanerbus2/include -I/home/di93zad/seanergys/telemetry-collector/install/yaml-cpp/include/ -I/home/di93zad/seanergys/telemetry-collector/install/capnp-0.8/include/ -I/usr/local/Cellar/googletest/1.17.0/include  -Wall -Wextra -Wpedantic -O0 -g -fPIC
+	CXXFLAGS :=-I/home/di93zad/seanergys/dataplane/seanerbus/install_seanerbus2/include -I/home/di93zad/seanergys/telemetry-collector/install/yaml-cpp/include/ -I/home/di93zad/seanergys/telemetry-collector/install/capnp-0.8/include/ -I/home/di93zad/seanergys/telemetry-collector/install/net-snmp/include -I/usr/local/Cellar/googletest/1.17.0/include  -Wall -Wextra -Wpedantic -O0 -g -fPIC
+
+	LDLIBS_SNMP:= -L/home/di93zad/seanergys/telemetry-collector/install/net-snmp/lib -lnetsnmp -lnetsnmpagent
+
 endif
 
-LDLIBS_SNMP:= -L/usr/local/opt/net-snmp/lib/ -lnetsnmp -lnetsnmpagent
 LDLIBS_PLUGINS := $(LDLIBS_SNMP)
 
 COLLECTOR := telemetry-collector
