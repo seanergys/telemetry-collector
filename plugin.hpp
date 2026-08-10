@@ -52,6 +52,9 @@ typedef struct
     init_actors_t* init_actors;
     finit_t*    finit;
 
+    //init_connections_t* init_connections; // TODO 
+    //finit_connections_t* finit_connections; // TODO 
+
     run_t* run; // publish
     req_t* req; // method to make requests (e.g., to the access daemon)
     res_t* res; // method to make requests (e.g., to the access daemon);
