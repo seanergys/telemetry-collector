@@ -1,12 +1,14 @@
 stages:
-  - prebuild
+  - deps
+  - pkgdeps
+  - build
 
 workflow:
   rules:
     - if: $CI_PIPELINE_SOURCE == "push"
 
-cpp-clang-format:
+deps:
   image: debian:testing-slim
-  stage: prebuild
+  stage: deps
   script:
-    - apt-get update && apt-get install -y clang-format git
+    - apt-get update && apt-get install -y git cmake capnproto libcapnp-dev build-essential libyaml-cpp-dev snmp snmpd
