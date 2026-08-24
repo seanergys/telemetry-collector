@@ -2,6 +2,7 @@ stages:
   - deps
   - pkgdeps
   - build
+  - test
 
 workflow:
   rules:
@@ -12,3 +13,24 @@ deps:
   stage: deps
   script:
     - apt-get update && apt-get install -y git cmake capnproto libcapnp-dev build-essential libyaml-cpp-dev snmp snmpd
+
+
+deps:
+  image: debian:testing-slim
+  stage: pkgdeps
+  script:
+    - echo "todo: pkg deps"
+
+
+build:
+  image: debian:testing-slim
+  stage: build
+  script:
+    - echo "todo: make"
+
+
+test:
+  image: debian:testing-slim
+  stage: test
+  script:
+    - echo "todo: add tests"
