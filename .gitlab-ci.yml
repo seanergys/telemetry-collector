@@ -19,18 +19,18 @@ deps:
   image: debian:testing-slim
   stage: pkgdeps
   script:
-    - echo "todo: pkg deps"
+    - echo "todo -> pkg deps"
 
 
 build:
   image: debian:testing-slim
   stage: build
   script:
-    - echo "todo: make"
+    - echo "todo -> make"
 
 
 test:
   image: debian:testing-slim
   stage: test
   script:
-    - echo "todo: add tests"
+    - echo "todo -> add tests"
