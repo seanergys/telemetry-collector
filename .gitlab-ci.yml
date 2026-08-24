@@ -1,0 +1,12 @@
+stages:
+  - prebuild
+
+workflow:
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "push"
+
+cpp-clang-format:
+  image: debian:testing-slim
+  stage: prebuild
+  script:
+    - apt-get update && apt-get install -y clang-format git
