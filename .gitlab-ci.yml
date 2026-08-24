@@ -2,12 +2,16 @@ stages:
   - deps
   - pkgdeps
   - build
+<<<<<<< HEAD
   - test
+=======
+>>>>>>> 577b174 (dev: ci pipeline init )
 
 workflow:
   rules:
     - if: $CI_PIPELINE_SOURCE == "push"
 
+<<<<<<< HEAD
 pkgdeps:
   image: debian:testing-slim
   stage: pkgdeps
@@ -52,3 +56,10 @@ test:
   stage: test
   script:
     - echo "todo -> add tests"
+=======
+deps:
+  image: debian:testing-slim
+  stage: deps
+  script:
+    - apt-get update && apt-get install -y git cmake capnproto libcapnp-dev build-essential libyaml-cpp-dev snmp snmpd
+>>>>>>> 577b174 (dev: ci pipeline init )
