@@ -8,18 +8,12 @@ workflow:
   rules:
     - if: $CI_PIPELINE_SOURCE == "push"
 
-deps:
-  image: debian:testing-slim
-  stage: deps
-  script:
-    - apt-get update && apt-get install -y git cmake capnproto libcapnp-dev build-essential libyaml-cpp-dev snmp snmpd
-  
 pkgdeps:
   image: debian:testing-slim
   stage: pkgdeps
   script:
     - echo "todo -> pkg deps"
-    - apt-get update && apt-get install -y git cmake capnproto libcapnp-dev build-essential libyaml-cpp-dev snmp snmpd
+    #- apt-get update && apt-get install -y git cmake capnproto libcapnp-dev build-essential libyaml-cpp-dev snmp snmpd
     - git clone https://seanerbus_token:${seanerbus_token}@gitlab.seanergys.fz-juelich.de/software/seanerbus.git
   artifacts:
     paths:
@@ -30,10 +24,11 @@ pkgdeps:
 build:
   image: debian:testing-slim
   stage: build
-  needs: ["pkgdeps"]
+  #needs: ["pkgdeps"]
   script:
     - echo "todo -> make"
-    - ls seanerbus-cpp
+    - git clone https://seanerbus_token:$seanerbus_token@gitlab.seanergys.fz-juelich.de/software/seanerbus.git
+    #- ls seanerbus-cpp
 
 
 test:
