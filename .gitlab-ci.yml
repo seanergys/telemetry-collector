@@ -15,7 +15,7 @@ deps:
     - apt-get update && apt-get install -y git cmake capnproto libcapnp-dev build-essential libyaml-cpp-dev snmp snmpd
 
 
-deps:
+pkgdeps:
   image: debian:testing-slim
   stage: pkgdeps
   script:
