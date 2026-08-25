@@ -20,6 +20,7 @@ deps:
   stage: pkgdeps
   script:
     - echo "todo -> pkg deps"
+    - git clone git@gitlab.seanergys.fz-juelich.de:software/seanerbus-cpp.git
 
 
 build:
