@@ -13,21 +13,27 @@ deps:
   stage: deps
   script:
     - apt-get update && apt-get install -y git cmake capnproto libcapnp-dev build-essential libyaml-cpp-dev snmp snmpd
-
-
+  
 pkgdeps:
   image: debian:testing-slim
   stage: pkgdeps
   script:
     - echo "todo -> pkg deps"
+    - apt-get update && apt-get install -y git cmake capnproto libcapnp-dev build-essential libyaml-cpp-dev snmp snmpd
     - git clone git@gitlab.seanergys.fz-juelich.de:software/seanerbus-cpp.git
+  artifacts:
+    paths:
+      - seanerbus-cpp/
+    expire_in: 1 hour
 
 
 build:
   image: debian:testing-slim
   stage: build
+  needs: ["pkgdeps"]
   script:
     - echo "todo -> make"
+    - ls seanerbus-cpp
 
 
 test:
