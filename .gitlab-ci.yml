@@ -13,7 +13,8 @@ pkgdeps:
   stage: pkgdeps
   script:
     - echo "todo -> pkg deps"
-    #- apt-get update && apt-get install -y git cmake capnproto libcapnp-dev build-essential libyaml-cpp-dev snmp snmpd
+    - apt-get update && apt-get install -y git 
+    #cmake capnproto libcapnp-dev build-essential libyaml-cpp-dev snmp snmpd
     - git clone https://seanerbus_token:${seanerbus_token}@gitlab.seanergys.fz-juelich.de/software/seanerbus.git
   artifacts:
     paths:
@@ -27,6 +28,7 @@ build:
   #needs: ["pkgdeps"]
   script:
     - echo "todo -> make"
+    - apt-get update && apt-get install -y git 
     - git clone https://seanerbus_token:$seanerbus_token@gitlab.seanergys.fz-juelich.de/software/seanerbus.git
     #- ls seanerbus-cpp
 
