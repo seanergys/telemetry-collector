@@ -20,7 +20,7 @@ pkgdeps:
   script:
     - echo "todo -> pkg deps"
     - apt-get update && apt-get install -y git cmake capnproto libcapnp-dev build-essential libyaml-cpp-dev snmp snmpd
-    - git clone git@gitlab.seanergys.fz-juelich.de:software/seanerbus-cpp.git
+    - git clone https://gitlab.seanergys.fz-juelich.de/software/seanerbus.git
   artifacts:
     paths:
       - seanerbus-cpp/
