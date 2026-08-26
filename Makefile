@@ -11,9 +11,9 @@ ifeq ($(UNAME_S),Darwin)
 else
 	LIB_EXT := so
 	LIBFLAGS := -shared -fPIC
-	LDLIBS := -L/home/di93zad/seanergys/telemetry-collector/install/capnp-0.8/lib/  -lcapnp  -L/home/di93zad/seanergys/telemetry-collector/install/yaml-cpp/lib64/ -lyaml-cpp -lkj -lpthread -ldl -L/home/di93zad/seanergys/dataplane/seanerbus/install_seanerbus2/lib64 -lseanerbus
+	LDLIBS := -L/home/di93zad/seanergys/telemetry-collector/install/capnp-0.8/lib/  -lcapnp  -L/home/di93zad/seanergys/telemetry-collector/install/yaml-cpp/lib64/ -lyaml-cpp -lkj -lpthread -ldl -L/home/di93zad/seanergys/dataplane/install_seanerbus/lib64 -lseanerbus
 	GTEST_LIBS := -L/usr/local/Cellar/googletest/1.17.0/lib -lgtest -lgtest_main -pthread
-	CXXFLAGS :=-I/home/di93zad/seanergys/dataplane/seanerbus/install_seanerbus2/include -I/home/di93zad/seanergys/telemetry-collector/install/yaml-cpp/include/ -I/home/di93zad/seanergys/telemetry-collector/install/capnp-0.8/include/ -I/usr/local/Cellar/googletest/1.17.0/include  -Wall -Wextra -Wpedantic -O2 -g -fPIC
+	CXXFLAGS :=-I/home/di93zad/seanergys/dataplane/install_seanerbus/include -I/home/di93zad/seanergys/telemetry-collector/install/yaml-cpp/include/ -I/home/di93zad/seanergys/telemetry-collector/install/capnp-0.8/include/ -I/usr/local/Cellar/googletest/1.17.0/include  -Wall -Wextra -Wpedantic -O2 -g -fPIC
 endif
 
 COLLECTOR := telemetry-collector
