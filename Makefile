@@ -2,18 +2,25 @@ CXX := g++
 
 UNAME_S := $(shell uname -s)
 
-ifeq ($(UNAME_S),Darwin)
-	LIB_EXT := dylib
-	LIBFLAGS := -dynamiclib
-	LDLIBS := -L/usr/local/opt/yaml-cpp/lib -lyaml-cpp -L/usr/local/opt/capnp/lib/ -lcapnp -lkj -L/Users/di75gix/codes/seanergys/seanerbus/cpp_examples/install/lib -lseanerbus
-	GTEST_LIBS := -L/usr/local/Cellar/googletest/1.17.0/lib -lgtest -lgtest_main -pthread
-	CXXFLAGS :=-I/usr/local/opt/capnp/include/ -I/usr/local/opt/yaml-cpp/include/ -I/Users/di75gix/codes/seanergys/seanerbus/cpp_examples/install/include -I/usr/local/Cellar/googletest/1.17.0/include -std=c++20 -Wall -Wextra -Wpedantic -O2 -g
-else
+ifeq ($(make_for),CI)
 	LIB_EXT := so
-	LIBFLAGS := -shared -fPIC
-	LDLIBS := -L/home/di93zad/seanergys/telemetry-collector/install/capnp-0.8/lib/  -lcapnp  -L/home/di93zad/seanergys/telemetry-collector/install/yaml-cpp/lib64/ -lyaml-cpp -lkj -lpthread -ldl -L/home/di93zad/seanergys/dataplane/seanerbus/install_seanerbus2/lib64 -lseanerbus
-	GTEST_LIBS := -L/usr/local/Cellar/googletest/1.17.0/lib -lgtest -lgtest_main -pthread
-	CXXFLAGS :=-I/home/di93zad/seanergys/dataplane/seanerbus/install_seanerbus2/include -I/home/di93zad/seanergys/telemetry-collector/install/yaml-cpp/include/ -I/home/di93zad/seanergys/telemetry-collector/install/capnp-0.8/include/ -I/usr/local/Cellar/googletest/1.17.0/include  -Wall -Wextra -Wpedantic -O2 -g -fPIC
+	IBFLAGS := -shared -fPIC
+	LDLIBS := -lcapnp -lyaml-cpp -lkj -lpthread -ldl -L$(CURDIR)/../seanerbus-cpp/install_seanerbus/lib64 -lseanerbus
+	CXXFLAGS :=-I$(CURDIR)/../seanerbus-cpp/install_seanerbus/include -Wall -Wextra -Wpedantic -O2 -g -fPIC
+else
+	ifeq ($(UNAME_S),Darwin)
+		LIB_EXT := dylib
+		LIBFLAGS := -dynamiclib
+		LDLIBS := -L/usr/local/opt/yaml-cpp/lib -lyaml-cpp -L/usr/local/opt/capnp/lib/ -lcapnp -lkj -L/Users/di75gix/codes/seanergys/seanerbus/cpp_examples/install/lib -lseanerbus
+		GTEST_LIBS := -L/usr/local/Cellar/googletest/1.17.0/lib -lgtest -lgtest_main -pthread
+		CXXFLAGS :=-I/usr/local/opt/capnp/include/ -I/usr/local/opt/yaml-cpp/include/ -I/Users/di75gix/codes/seanergys/seanerbus/cpp_examples/install/include -I/usr/local/Cellar/googletest/1.17.0/include -std=c++20 -Wall -Wextra -Wpedantic -O2 -g
+	else
+		LIB_EXT := so
+		LIBFLAGS := -shared -fPIC
+		LDLIBS := -L/home/di93zad/seanergys/telemetry-collector/install/capnp-0.8/lib/  -lcapnp  -L/home/di93zad/seanergys/telemetry-collector/install/yaml-cpp/lib64/ -lyaml-cpp -lkj -lpthread -ldl -L/home/di93zad/seanergys/dataplane/seanerbus/install_seanerbus2/lib64 -lseanerbus
+		GTEST_LIBS := -L/usr/local/Cellar/googletest/1.17.0/lib -lgtest -lgtest_main -pthread
+		CXXFLAGS :=-I/home/di93zad/seanergys/dataplane/seanerbus/install_seanerbus2/include -I/home/di93zad/seanergys/telemetry-collector/install/yaml-cpp/include/ -I/home/di93zad/seanergys/telemetry-collector/install/capnp-0.8/include/ -I/usr/local/Cellar/googletest/1.17.0/include  -Wall -Wextra -Wpedantic -O2 -g -fPIC
+	endif
 endif
 
 COLLECTOR := telemetry-collector
