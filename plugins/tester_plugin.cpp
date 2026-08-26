@@ -15,7 +15,7 @@
 #include "seanerbus/client/simple_event_loop.hpp"
 #include "seanerbus/helpers/noexcept.hpp"
 
-static std::map<std::string, seanerbus::msg::TimeValueV1 *> sensor_values = {};
+static std::map<std::string, SensorReading *> sensor_values;
 
 // Global plugin instance
 plugin_interface_t plugin =
@@ -62,7 +62,7 @@ bool tester_init_sensors(void *runtime)
 
         // Add to the global sensors map using UUID as key
         ::sensors[uuid] = sensor;
-        sensor_values[conf->uuid] = new seanerbus::msg::TimeValueV1(0, 0.0);
+        sensor_values[conf->uuid] = new SensorReading{0, 0.0};
     }
 
     return true; // We're using the global map, not returning a pointer to sensors
@@ -133,12 +133,12 @@ void *sensor_sense(void *sensor)
     sensor_t *s = (sensor_t *)sensor;
     sensor_attribute_t *conf = s->conf;
 
-    seanerbus::msg::TimeValueV1 *tv = sensor_values[conf->uuid];
-
+    SensorReading *tv = sensor_values[conf->uuid];
     tv->time = getTimestamp();
+    tv->value++;
 
     // Print the sensor data
-    // std::cout << "[" << conf->uuid << "] value=" << tv->value<< ", timestamp=" << tv->time << std::endl;
+    std::cout << "[" << conf->uuid << "] value=" << tv->value << ", timestamp=" << tv->time << std::endl;
     return tv;
 }
 
@@ -184,7 +184,7 @@ void schedule_next(seanerbus::client::pub_sub::Connection &conn,
         std::this_thread::sleep_until(s.next_run);
     }
 
-    seanerbus::msg::TimeValueV1 *tv = (seanerbus::msg::TimeValueV1 *)s.sensor->sense(s.sensor);
+    SensorReading *tv = static_cast<SensorReading *>(s.sensor->sense(s.sensor));
 
     seanerbus::msg::MessageBuilder<TimeValueV1> msg_builder;
     msg_builder.builder().setTime(tv->time);
