@@ -25,10 +25,10 @@ pkgdeps:
     - cd build
     - cmake .. -DCMAKE_INSTALL_PREFIX=../install_seanerbus -DCMAKE_POSITION_INDEPENDENT_CODE=ON
     - make -j install
-  artifacts:
-    paths:
-      - seanerbus-cpp/
-    expire_in: 1 hour
+  # artifacts:
+  #   paths:
+  #     - seanerbus-cpp/
+  #   expire_in: 1 hour
 
 
 build:
