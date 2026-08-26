@@ -37,7 +37,13 @@ build:
   needs: ["pkgdeps"]
   script:
     - ls
-
+    # - export make_for="CI"
+    # - make -j 
+    # - ls
+  # artifacts:
+  #   paths:
+  #     - seanerbus-cpp/
+  #   expire_in: 1 hour
 
 
 test:
