@@ -11,11 +11,20 @@ workflow:
 pkgdeps:
   image: debian:testing-slim
   stage: pkgdeps
-  script:
-    - echo "todo -> pkg deps"
-    - apt-get update && apt-get install -y git 
-    #cmake capnproto libcapnp-dev build-essential libyaml-cpp-dev snmp snmpd
-    - git clone https://seanerbus_token:$seanerbus_token@gitlab.seanergys.fz-juelich.de/software/seanerbus.git
+  script:    
+    - ls
+    - pwd
+    - apt-get update && apt-get install -y git cmake capnproto libcapnp-dev build-essential libyaml-cpp-dev snmp snmpd catch2 libcatch2-dev pkg-config 
+    - rm -rf seanerbus-cpp
+    - git clone https://software_token:$software_token@gitlab.seanergys.fz-juelich.de/software/seanerbus-cpp.git
+    - cd seanerbus-cpp
+    - git checkout feat/final_api
+    - git clone https://software_token:$software_token@gitlab.seanergys.fz-juelich.de/software/seanerbus-msg.git schemas
+    - git clone https://github.com/fmtlib/fmt.git lib/fmt
+    - mkdir build
+    - cd build
+    - cmake .. -DCMAKE_INSTALL_PREFIX=../install_seanerbus -DCMAKE_POSITION_INDEPENDENT_CODE=ON
+    - make -j install
   artifacts:
     paths:
       - seanerbus-cpp/
@@ -25,12 +34,10 @@ pkgdeps:
 build:
   image: debian:testing-slim
   stage: build
-  #needs: ["pkgdeps"]
+  needs: ["pkgdeps"]
   script:
-    - echo "todo -> make"
-    - apt-get update && apt-get install -y git 
-    - git clone https://seanerbus_token:$seanerbus_token@gitlab.seanergys.fz-juelich.de/software/seanerbus.git
-    #- ls seanerbus-cpp
+    - ls
+
 
 
 test:
