@@ -156,10 +156,10 @@ struct CompareNextRun
     }
 };
 
-void schedule_next(seanerbus::client::pub_sub::Connection &conn,
+void read_publish_schedule_next(seanerbus::client::pub_sub::Connection &conn,
                    std::priority_queue<ScheduledSensor, std::vector<ScheduledSensor>, CompareNextRun> &queue);
 
-void on_publish_done(seanerbus::client::pub_sub::Connection &conn,
+void on_publish(seanerbus::client::pub_sub::Connection &conn,
                      std::priority_queue<ScheduledSensor, std::vector<ScheduledSensor>, CompareNextRun> &queue,
                      seanerbus::Expected<void, seanerbus::Error> err)
 {
@@ -169,10 +169,10 @@ void on_publish_done(seanerbus::client::pub_sub::Connection &conn,
         conn.shutdown(); // error path only — matches the base example
         return;
     }
-    schedule_next(conn, queue);
+    read_publish_schedule_next(conn, queue);
 }
 
-void schedule_next(seanerbus::client::pub_sub::Connection &conn,
+void read_publish_schedule_next(seanerbus::client::pub_sub::Connection &conn,
                    std::priority_queue<ScheduledSensor, std::vector<ScheduledSensor>, CompareNextRun> &queue)
 {
     auto s = queue.top();
@@ -200,7 +200,7 @@ void schedule_next(seanerbus::client::pub_sub::Connection &conn,
                  [&conn, &queue](seanerbus::client::pub_sub::Connection &c,
                                  seanerbus::Expected<void, seanerbus::Error> e)
                  {
-                     on_publish_done(c, queue, e);
+                     on_publish(c, queue, e);
                  });
 }
 
@@ -220,7 +220,7 @@ void *tester_run(void *runtime)
     }
 
     seanerbus::client::pub_sub::Connection conn("demobus://localhost:5398");
-    schedule_next(conn, queue);
+    read_publish_schedule_next(conn, queue);
 
     seanerbus::client::SimpleEventLoop sl;
     sl.register_pub_sub_connection(conn);
