@@ -25,10 +25,10 @@ pkgdeps:
     - cd build
     - cmake .. -DCMAKE_INSTALL_PREFIX=../install_seanerbus -DCMAKE_POSITION_INDEPENDENT_CODE=ON
     - make -j install
-  # artifacts:
-  #   paths:
-  #     - seanerbus-cpp/
-  #   expire_in: 1 hour
+  artifacts:
+    paths:
+      - seanerbus-cpp/
+    expire_in: 1 hour
 
 
 build:
@@ -37,13 +37,14 @@ build:
   needs: ["pkgdeps"]
   script:
     - ls
-    # - export make_for="CI"
-    # - make -j 
-    # - ls
-  # artifacts:
-  #   paths:
-  #     - seanerbus-cpp/
-  #   expire_in: 1 hour
+    - apt-get update && apt-get install -y git cmake capnproto libcapnp-dev build-essential libyaml-cpp-dev snmp snmpd catch2 libcatch2-dev pkg-config 
+    - export make_for="CI"
+    - make -j 
+    - ls
+  artifacts:
+    paths:
+      - seanerbus-cpp/
+    expire_in: 1 hour
 
 
 test:
