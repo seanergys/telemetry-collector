@@ -37,6 +37,7 @@ build:
   needs: ["pkgdeps"]
   script:
     - ls
+    - apt-get update && apt-get install -y git cmake capnproto libcapnp-dev build-essential libyaml-cpp-dev snmp snmpd catch2 libcatch2-dev pkg-config 
     - export make_for="CI"
     - make -j 
     - ls
