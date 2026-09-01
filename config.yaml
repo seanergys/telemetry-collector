@@ -3,7 +3,11 @@ seanerbus:
 
 plugins:
 
-  - path: /home/di93zad/seanergys/telemetry-collector-final_api/plugins/tester.so
+  - path: /home/di93zad/seanergys/telemetry-collector/plugins/tester.so
     config: plugins/tester.yaml
     uuid: e94e6e91-a83d-4e04-a147-aab3860d0cd8
     name: tester
+  - path: /home/di93zad/seanergys/telemetry-collector/plugins/sysfs.so
+    config: plugins/sysfs.yaml
+    uuid: e94e6e91-a83d-4e04-a147-aab3860d0cxx
+    name: sysfs

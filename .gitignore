@@ -8,3 +8,4 @@ capnproto-*
 install
 telemetry-collector
 !sysfs.yaml
+net-snmp-5.9.4/*
