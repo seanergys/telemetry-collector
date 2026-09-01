@@ -15,7 +15,6 @@
 
 #include "sysfs_plugin.hpp"
 
-#include <seanerbus/msg/time_value_v1.hpp>
 #include <seanerbus/client/pub_sub/connection.hpp>
 #include "seanerbus/client/simple_event_loop.hpp"
 #include "seanerbus/helpers/noexcept.hpp"

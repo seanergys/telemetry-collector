@@ -10,7 +10,6 @@
 
 #include "tester_plugin.hpp"
 
-#include <seanerbus/msg/time_value_v1.hpp>
 #include <seanerbus/client/pub_sub/connection.hpp>
 #include "seanerbus/client/simple_event_loop.hpp"
 #include "seanerbus/helpers/noexcept.hpp"
@@ -157,11 +156,11 @@ struct CompareNextRun
 };
 
 void read_publish_schedule_next(seanerbus::client::pub_sub::Connection &conn,
-                   std::priority_queue<ScheduledSensor, std::vector<ScheduledSensor>, CompareNextRun> &queue);
+                                std::priority_queue<ScheduledSensor, std::vector<ScheduledSensor>, CompareNextRun> &queue);
 
 void on_publish(seanerbus::client::pub_sub::Connection &conn,
-                     std::priority_queue<ScheduledSensor, std::vector<ScheduledSensor>, CompareNextRun> &queue,
-                     seanerbus::Expected<void, seanerbus::Error> err)
+                std::priority_queue<ScheduledSensor, std::vector<ScheduledSensor>, CompareNextRun> &queue,
+                seanerbus::Expected<void, seanerbus::Error> err)
 {
     if (!err.ok())
     {
@@ -173,7 +172,7 @@ void on_publish(seanerbus::client::pub_sub::Connection &conn,
 }
 
 void read_publish_schedule_next(seanerbus::client::pub_sub::Connection &conn,
-                   std::priority_queue<ScheduledSensor, std::vector<ScheduledSensor>, CompareNextRun> &queue)
+                                std::priority_queue<ScheduledSensor, std::vector<ScheduledSensor>, CompareNextRun> &queue)
 {
     auto s = queue.top();
     queue.pop();
