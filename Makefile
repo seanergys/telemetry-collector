@@ -5,8 +5,8 @@ UNAME_S := $(shell uname -s)
 ifeq ($(make_for),CI)
 	LIB_EXT := so
 	IBFLAGS := -shared -fPIC
-	LDLIBS := -lcapnp -lyaml-cpp -lkj -lpthread -ldl -L$(CURDIR)/../seanerbus-cpp/install_seanerbus/lib64 -lseanerbus
-	CXXFLAGS :=-I$(CURDIR)/../seanerbus-cpp/install_seanerbus/include -Wall -Wextra -Wpedantic -O2 -g -fPIC
+	LDLIBS := -lcapnp -lyaml-cpp -lkj -lpthread -ldl -L$(CURDIR)/seanerbus-cpp/install_seanerbus/lib64 -lseanerbus
+	CXXFLAGS :=-I$(CURDIR)/seanerbus-cpp/install_seanerbus/include -Wall -Wextra -Wpedantic -O2 -g -fPIC
 else
 	ifeq ($(UNAME_S),Darwin)
 		LIB_EXT := dylib
