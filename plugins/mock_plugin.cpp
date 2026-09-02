@@ -81,7 +81,9 @@ extern "C" plugin_interface_t plugin =
     mock_init_sensors,  // init_sensors function
     mock_init_actors,   // init_actors function
     mock_finit,
-    mock_run,           // run function
+    nullptr,
+    nullptr,
+    mock_run,           // run function    
     nullptr, // req
     nullptr, // res
     mock_configurator,   // configurator function

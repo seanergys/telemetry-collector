@@ -25,6 +25,8 @@ plugin_interface_t plugin =
         tester_init_sensors,
         nullptr, // init_actors
         tester_finit,
+        nullptr,
+        nullptr,
         tester_run,          // run function
         nullptr,             // req
         nullptr,             // res
