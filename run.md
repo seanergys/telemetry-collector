@@ -1,5 +1,7 @@
 # Run
 
+- run it from gateway (due to access issues)
+
 ## t1
 
 ```
