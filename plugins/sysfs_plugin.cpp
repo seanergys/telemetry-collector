@@ -30,6 +30,8 @@ plugin_interface_t plugin =
         sysfs_init_sensors,
         nullptr, // init_actors
         sysfs_finit,
+        nullptr,
+        nullptr,
         sysfs_run,          // run function
         nullptr,            // req
         nullptr,            // res

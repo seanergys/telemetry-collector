@@ -42,6 +42,24 @@ make -j
 make -j install
 ```
 
+##
+
+```
+wget https://sourceforge.net/projects/net-snmp/files/net-snmp/5.9.4/net-snmp-5.9.4.tar.gz
+tar xzf net-snmp-5.9.4.tar.gz
+rm net-snmp-5.9.4.tar.gz
+cd net-snmp-5.9.4
+
+
+./configure --prefix=$HOME/seanergys/telemetry-collector/install/net-snmp \
+    --with-defaults \
+    --disable-agent \
+    --disable-manuals
+
+make -j
+make -j install
+
+```
 
 ## seanerbus
 
