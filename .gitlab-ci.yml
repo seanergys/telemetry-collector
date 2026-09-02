@@ -43,7 +43,7 @@ build:
     - ls
   artifacts:
     paths:
-      - seanerbus-cpp/
+      - "**/*"
     expire_in: 1 hour
 
 
@@ -51,4 +51,8 @@ test:
   image: debian:testing-slim
   stage: test
   script:
-    - echo "todo -> add tests"
+    - test -f telemetry-collector || -f plugins/sysfs.so || test -f plugins/tester.so || exit 1
+  artifacts:
+    paths:
+      - "**/*"
+    expire_in: 1 hour
