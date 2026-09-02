@@ -43,7 +43,7 @@ build:
     - ls
   artifacts:
     paths:
-      - seanerbus-cpp/
+      - "**/*"
     expire_in: 1 hour
 
 
@@ -52,3 +52,7 @@ test:
   stage: test
   script:
     - echo "todo -> add tests"
+  artifacts:
+    paths:
+      - "**/*"
+    expire_in: 1 hour
