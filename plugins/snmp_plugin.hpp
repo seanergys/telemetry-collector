@@ -50,10 +50,16 @@ typedef struct sensor_attribute
 
     std::string oid_suffix;
     std::string oid_prefix;
-    oid         _oid[MAX_OID_LEN];
-    size_t      _oidLen;
+    oid _oid[MAX_OID_LEN];
+    size_t _oidLen;
 
 } sensor_attribute_t;
+
+struct SensorReading
+{
+    uint64_t time = 0;
+    double value = 0.0;
+};
 
 std::map<std::string, sensor_attribute_t *> configs; // uuid -> configs
 std::map<std::string, sensor_t *> sensors;           // uuid -> sensors
