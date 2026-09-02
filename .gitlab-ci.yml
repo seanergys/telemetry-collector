@@ -51,7 +51,7 @@ test:
   image: debian:testing-slim
   stage: test
   script:
-    - echo "todo -> add tests"
+    - test -f plugins/sysfs.so || test -f plugins/tester.so || exit 1
   artifacts:
     paths:
       - "**/*"
