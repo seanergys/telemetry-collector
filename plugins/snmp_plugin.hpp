@@ -15,7 +15,9 @@
 void *snmp_create(void);
 bool snmp_destroy(void *runtime);
 bool snmp_init_sensors(void *runtime);
-bool snmp_finit(void *runtime);
+bool snmp_initlib (void *runtime);
+bool snmp_finit (void *runtime);
+
 void *snmp_run(void *runtime);
 
 /* config loading */

@@ -29,6 +29,8 @@ plugin_interface_t plugin =
         snmp_init_sensors,
         nullptr, // init_actors
         snmp_finit,
+        snmp_initlib,
+        nullptr,
         snmp_run,          // run function
         nullptr,           // req
         nullptr,           // res
@@ -254,7 +256,7 @@ void setup_snmp_session(sensor_attribute_t *conf)
 bool snmp_init_sensors(void *runtime)
 {
 
-    init_snmp("SNMPplugin");
+    //init_snmp("SNMPplugin");
 
     // Get the plugin config from runtime
 
@@ -277,7 +279,12 @@ bool snmp_init_sensors(void *runtime)
     return true; // We're using the global map, not returning a pointer to sensors
 }
 
-bool snmp_finit(void *runtime)
+bool snmp_initlib (void *runtime){
+    init_snmp("SNMPplugin");
+    return true;
+}
+
+bool snmp_plugin_finit(void *runtime)
 {
 
     // Clear the map

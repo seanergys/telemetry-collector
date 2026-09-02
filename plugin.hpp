@@ -29,6 +29,8 @@ typedef bool  destroy_t(void*);
 typedef bool  init_sensors_t (void*);
 typedef bool  init_actors_t (void*);
 typedef bool  finit_t (void*);
+typedef bool  init_connections_t (void*);
+typedef bool  finit_connections_t (void*);
 
 typedef void* configurator_t (void*);
 typedef bool  free_config_t(void*);
@@ -52,8 +54,8 @@ typedef struct
     init_actors_t* init_actors;
     finit_t*    finit;
 
-    //init_connections_t* init_connections; // TODO 
-    //finit_connections_t* finit_connections; // TODO 
+    init_connections_t* init_downstream_connections;
+    finit_connections_t* finit_downstream_connections;
 
     run_t* run; // publish
     req_t* req; // method to make requests (e.g., to the access daemon)
@@ -78,6 +80,7 @@ typedef struct
     bool sensors_initialized;
     bool actors_initialized;
     connection_t* connection;
+    bool downstream_connections_initialized;
     void* config;  // Plugin-specific configuration (YAML or parsed data)
 
     bool loaded;

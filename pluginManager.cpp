@@ -296,6 +296,11 @@ bool PluginManager::init_plugin(
         runtime->plugin->create();
     }
 
+    // if init connections exits, run it
+    if (runtime->plugin->init_downstream_connections)
+    {
+        runtime->downstream_connections_initialized = runtime->plugin->init_downstream_connections(runtime);
+    }
 
     // Initialize sensors if the function is implemented
     if (runtime->plugin->init_sensors)
