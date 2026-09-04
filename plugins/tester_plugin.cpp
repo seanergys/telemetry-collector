@@ -3,16 +3,24 @@
 #include <ctime>
 #include <iostream>
 #include <thread>
-#include <map>
-#include <algorithm>
-#include <queue>
+#include <unordered_map>
 #include <yaml-cpp/yaml.h>
+#include <queue>
+#include <algorithm>
+#include <map>
+
+#include <string>
+#include <fstream>
+#include <regex>
 
 #include "tester_plugin.hpp"
 
 #include <seanerbus/client/pub_sub/connection.hpp>
 #include "seanerbus/client/simple_event_loop.hpp"
 #include "seanerbus/helpers/noexcept.hpp"
+
+#include <seanerbus/client/req_res/connection.hpp>
+#include <seanerbus/helpers/resolve.hpp>
 
 static std::map<std::string, SensorReading *> sensor_values;
 
@@ -49,9 +57,65 @@ bool tester_destroy(void *runtime)
     false;
 }
 
+static void setCharField(char *&field, const std::string &value)
+{
+    delete[] field;
+    field = new char[value.size() + 1];
+    std::memcpy(field, value.c_str(), value.size() + 1);
+}
+
+void applyFields(const YAML::Node &node, sensor_attribute_t *conf)
+{
+    if (!node)
+        return;
+
+    if (node["uuid"])
+        setCharField(conf->uuid, node["uuid"].as<std::string>());
+    if (node["topic"])
+        setCharField(conf->topic, node["topic"].as<std::string>());
+    if (node["interval_ms"])
+        conf->interval_ms = std::chrono::milliseconds(node["interval_ms"].as<uint64_t>());
+    if (node["description"])
+        setCharField(conf->description, node["description"].as<std::string>());
+    if (node["unit"])
+        setCharField(conf->unit, node["unit"].as<std::string>());
+
+    if (node["metadata_name"] && node["metadata_value"])
+    {
+        std::string k = node["metadata_name"].as<std::string>();
+        std::string v = node["metadata_value"].as<std::string>();
+        conf->name[k] = v;
+    }
+}
+bool applyTemplateConfigs(const YAML::Node &node, const YAML::Node &templates, sensor_attribute_t *conf)
+{
+    if (!node["template"] || !templates)
+    {
+        return false;
+    }
+
+    std::string tmplName = node["template"].as<std::string>();
+    YAML::Node tmpl = templates[tmplName];
+
+    if (!tmpl)
+    {
+        std::cout << "Unknown template referenced: '" << tmplName << "'" << std::endl;
+        return false;
+    }
+
+    applyFields(tmpl, conf);
+    return true;
+}
+
 bool tester_init_sensors(void *runtime)
 {
     // Get the plugin config from runtime
+
+    // Connect to the server.
+    seanerbus::client::req_res::Connection conn("demobus://localhost:5398");
+
+    char hostname[HOST_NAME_MAX + 1];
+    gethostname(hostname, sizeof(hostname));
 
     for (const auto &[uuid, conf] : configs)
     {
@@ -64,8 +128,34 @@ bool tester_init_sensors(void *runtime)
         // Add to the global sensors map using UUID as key
         ::sensors[uuid] = sensor;
         sensor_values[conf->uuid] = new SensorReading{0, 0.0};
-    }
 
+        auto addr = seanerbus::msg::Address{seanerbus::msg::Uuid{conf->uuid}};
+
+        // for (const auto &[key, value] : conf->name)
+        // {
+        //     std::cout << key << " = " << value << std::endl;
+        // }
+
+        conf->name["hostname"] = std::string(hostname);
+
+        seanerbus::resolve::register_resolve(conn, conf->name, addr,
+                                             [](seanerbus::client::req_res::Connection &conn,
+                                                seanerbus::Expected<void, seanerbus::Error> res)
+                                             {
+                                                 if (!res.ok())
+                                                 {
+                                                     conn.shutdown();
+                                                     return true;
+                                                 }
+                                             });
+    }
+    seanerbus::client::SimpleEventLoop sel;
+
+    sel.register_req_res_connection(conn);
+
+    sel.run();
+
+    conn.shutdown();
     return true; // We're using the global map, not returning a pointer to sensors
 }
 
@@ -241,41 +331,56 @@ void *tester_configurator(void *configPtr)
 
     // Cast the void* back to YAML::Node*
     YAML::Node *yaml = static_cast<YAML::Node *>(configPtr);
+    YAML::Node &config = *yaml;
 
-    // Clear any existing sensors in the map
-
-    // Load sensors from the YAML config -> move to configurator
-    if ((*yaml)["sensors"].IsSequence())
+    const YAML::Node &templates = config["sensor_templates"];
+    if (!templates)
     {
-        for (const auto &node : (*yaml)["sensors"])
+        std::cout << "No sensor_templates" << std::endl;
+    }
+
+    if (!config["sensor_groups"])
+    {
+        std::cout << "Missing sensor_groups" << std::endl;
+        return yaml;
+    }
+
+    // Load sensor groups from the YAML config
+    for (const auto &groupEntry : config["sensor_groups"])
+    {
+
+        std::string groupName = groupEntry.first.as<std::string>();
+        const YAML::Node &group = groupEntry.second;
+
+        // sensor list check
+        if (!group["sensors"])
         {
+            std::cout << "Group '" << groupName << "' missing sensors list" << std::endl;
+            continue;
+        }
+
+        for (const auto &item : group["sensors"])
+        {
+
             // Create a sensor_attribute_t for this sensor
             sensor_attribute_t *conf = new sensor_attribute_t();
 
-            // Copy UUID
-            std::string uuid_str = node["uuid"].as<std::string>();
-            conf->uuid = new char[uuid_str.size() + 1];
-            std::memcpy(conf->uuid, uuid_str.c_str(), uuid_str.size() + 1);
+            // apply group-level template attr
+            if (templates)
+            {
+                applyTemplateConfigs(group, templates, conf);
+            }
 
-            // Copy topic
-            std::string topic_str = node["topic"].as<std::string>();
-            conf->topic = new char[topic_str.size() + 1];
-            std::memcpy(conf->topic, topic_str.c_str(), topic_str.size() + 1);
-            // Copy unit
-            std::string unit_str = node["unit"].as<std::string>();
-            conf->unit = new char[unit_str.size() + 1];
-            std::memcpy(conf->unit, unit_str.c_str(), unit_str.size() + 1);
+            // apply group-level config attr
+            applyFields(group, conf);
 
-            // Set interval
-            conf->interval_ms = std::chrono::milliseconds(node["interval_ms"].as<uint64_t>());
+            // apply sensor-level config attr
+            applyFields(item, conf);
 
             // Add to the global sensors map using UUID as key
             ::configs[conf->uuid] = conf;
         }
     }
-
-    // Since the configurator returns a YAML::Node*, we need to delete it
-
     return yaml;
 }
 
