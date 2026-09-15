@@ -18,7 +18,6 @@ pkgdeps:
     - rm -rf seanerbus-cpp
     - git clone https://software_token:$software_token@gitlab.seanergys.fz-juelich.de/software/seanerbus-cpp.git
     - cd seanerbus-cpp
-    - git checkout feat/final_api
     - git clone https://software_token:$software_token@gitlab.seanergys.fz-juelich.de/software/seanerbus-msg.git schemas
     - git clone https://github.com/fmtlib/fmt.git lib/fmt
     - mkdir build
