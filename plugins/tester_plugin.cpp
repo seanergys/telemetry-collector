@@ -71,8 +71,6 @@ void applyFields(const YAML::Node &node, sensor_attribute_t *conf)
 
     if (node["uuid"])
         setCharField(conf->uuid, node["uuid"].as<std::string>());
-    if (node["topic"])
-        setCharField(conf->topic, node["topic"].as<std::string>());
     if (node["interval_ms"])
         conf->interval_ms = std::chrono::milliseconds(node["interval_ms"].as<uint64_t>());
     if (node["description"])
@@ -80,11 +78,13 @@ void applyFields(const YAML::Node &node, sensor_attribute_t *conf)
     if (node["unit"])
         setCharField(conf->unit, node["unit"].as<std::string>());
 
-    if (node["metadata_key"] && node["metadata_value"])
+    if (node["name_part"])
     {
-        std::string k = node["metadata_key"].as<std::string>();
-        std::string v = node["metadata_value"].as<std::string>();
-        conf->name[k] = v;
+	for (const auto & p : node["name_part"]) {
+    	    std::string k = p.first.as<std::string>();;
+    	    std::string v =p.second.as<std::string>();;
+            conf->name[k] = v;
+	}
     }
 }
 bool applyTemplateConfigs(const YAML::Node &node, const YAML::Node &templates, sensor_attribute_t *conf)
@@ -131,11 +131,6 @@ bool tester_init_sensors(void *runtime)
 
         auto addr = seanerbus::msg::Address{seanerbus::msg::Uuid{conf->uuid}};
 
-        // for (const auto &[key, value] : conf->name)
-        // {
-        //     std::cout << key << " = " << value << std::endl;
-        // }
-
         conf->name["hostname"] = std::string(hostname);
 
         seanerbus::resolve::register_resolve(conn, conf->name, addr,
@@ -169,7 +164,6 @@ bool tester_finit(void *runtime)
         if (conf)
         {
             delete conf->uuid;
-            delete conf->topic;
             delete conf->unit;
             delete conf;
         }
@@ -182,7 +176,6 @@ bool tester_finit(void *runtime)
         if (conf)
         {
             delete conf->uuid;
-            delete conf->topic;
             delete conf->unit;
             delete conf;
         }
