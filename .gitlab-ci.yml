@@ -22,7 +22,7 @@ pkgdeps:
     - git clone https://github.com/fmtlib/fmt.git lib/fmt
     - mkdir build
     - cd build
-    - cmake .. -DCMAKE_INSTALL_PREFIX=../install_seanerbus -DCMAKE_POSITION_INDEPENDENT_CODE=ON
+    - cmake .. -DCMAKE_INSTALL_PREFIX=../install -DCMAKE_POSITION_INDEPENDENT_CODE=ON
     - make -j install
   artifacts:
     paths:
