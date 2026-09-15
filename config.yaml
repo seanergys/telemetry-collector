@@ -3,7 +3,7 @@ seanerbus:
 
 plugins:
 
-  - path: /home/di93zad/seanergys/telemetry-collector/plugins/snmp.so
-    config: plugins/snmp.yaml
+  - path: /home/di93zad/seanergys/telemetry-collector/plugins/tester.so
+    config: plugins/tester.yaml
     uuid: e94e6e91-a83d-4e04-a147-aab3860d0cd9
-    name: snmp
+    name: tester

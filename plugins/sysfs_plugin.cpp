@@ -15,9 +15,8 @@
 
 #include "sysfs_plugin.hpp"
 
-#include <seanerbus/client/pub_sub/connection.hpp>
+#include <seanerbus/client/connection.hpp>
 #include "seanerbus/client/simple_event_loop.hpp"
-#include "seanerbus/helpers/noexcept.hpp"
 
 static std::map<std::string, SensorReading *> sensor_values;
 
@@ -260,10 +259,10 @@ struct CompareNextRun
     }
 };
 
-void read_publish_schedule_next(seanerbus::client::pub_sub::Connection &conn,
+void read_publish_schedule_next(seanerbus::client::Connection &conn,
                                 std::priority_queue<ScheduledSensor, std::vector<ScheduledSensor>, CompareNextRun> &queue);
 
-void on_publish(seanerbus::client::pub_sub::Connection &conn,
+void on_publish(seanerbus::client::Connection &conn,
                 std::priority_queue<ScheduledSensor, std::vector<ScheduledSensor>, CompareNextRun> &queue,
                 seanerbus::Expected<void, seanerbus::Error> err)
 {
@@ -275,7 +274,7 @@ void on_publish(seanerbus::client::pub_sub::Connection &conn,
     }
     read_publish_schedule_next(conn, queue);
 }
-void read_publish_schedule_next(seanerbus::client::pub_sub::Connection &conn,
+void read_publish_schedule_next(seanerbus::client::Connection &conn,
                                 std::priority_queue<ScheduledSensor, std::vector<ScheduledSensor>, CompareNextRun> &queue)
 {
     auto s = queue.top();
@@ -300,7 +299,7 @@ void read_publish_schedule_next(seanerbus::client::pub_sub::Connection &conn,
     queue.push(s);
 
     conn.publish(msg_builder.to_message(addr),
-                 [&conn, &queue](seanerbus::client::pub_sub::Connection &c,
+                 [&conn, &queue](seanerbus::client::Connection &c,
                                  seanerbus::Expected<void, seanerbus::Error> e)
                  {
                      on_publish(c, queue, e);
@@ -320,11 +319,10 @@ void *sysfs_run(void *runtime)
         queue.push({std::chrono::steady_clock::now(),
                     s.second});
     }
-    seanerbus::client::pub_sub::Connection conn("demobus://localhost:5398");
+    seanerbus::client::Connection conn("demobus://localhost:5398", "demobus://localhost:5398");
     read_publish_schedule_next(conn, queue);
 
-    seanerbus::client::SimpleEventLoop sl;
-    sl.register_pub_sub_connection(conn);
+    seanerbus::client::SimpleEventLoop sl(conn);
     sl.run();
 
     if (!conn.result().ok())
