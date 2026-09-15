@@ -6,7 +6,7 @@ sensor_templates:
   temp: 
     interval_ms: 5000
     factor: 0.001
-    metadata_name: socket
+    metadata_key: socket
     metadata_value: 1
 
 sensor_groups:
@@ -17,25 +17,25 @@ sensor_groups:
 
     sensors:
       - uuid: 7bc3d210-a49f-4422-8fe8-26ca480d0e1a
-        metadata_name: metric
+        metadata_key: metric
         metadata_value: temperature
         interval_ms: 1000
         unit: C
 
       - uuid: 7bc3d210-a49f-4422-8fe8-26ca480d0e1b
-        metadata_name: metric
+        metadata_key: metric
         metadata_value: humidity
         interval_ms: 1000
         unit: "%"
 
       - uuid: 7bc3d210-a49f-4422-8fe8-26ca480d0e1c
-        metadata_name: metric
+        metadata_key: metric
         metadata_value: pressure
         interval_ms: 5000
         unit: hPa
 
       - uuid: 7bc3d210-a49f-4422-8fe8-26ca480d0e1f
-        metadata_name: metric
+        metadata_key: metric
         metadata_value: flow
         interval_ms: 5000
         unit: l/min

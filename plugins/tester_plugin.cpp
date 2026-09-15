@@ -80,9 +80,9 @@ void applyFields(const YAML::Node &node, sensor_attribute_t *conf)
     if (node["unit"])
         setCharField(conf->unit, node["unit"].as<std::string>());
 
-    if (node["metadata_name"] && node["metadata_value"])
+    if (node["metadata_key"] && node["metadata_value"])
     {
-        std::string k = node["metadata_name"].as<std::string>();
+        std::string k = node["metadata_key"].as<std::string>();
         std::string v = node["metadata_value"].as<std::string>();
         conf->name[k] = v;
     }
