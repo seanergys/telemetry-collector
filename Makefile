@@ -5,8 +5,8 @@ UNAME_S := $(shell uname -s)
 ifeq ($(make_for),CI)
 	LIB_EXT := so
 	IBFLAGS := -shared -fPIC
-	LDLIBS := -L$(CURDIR)/seanerbus-cpp/install_seanerbus/lib -lseanerbus -lcapnp -lyaml-cpp -lkj -lkj-async -lpthread -ldl
-	CXXFLAGS :=-I$(CURDIR)/seanerbus-cpp/install_seanerbus/include -Wall -Wextra -Wpedantic -O2 -g -fPIC -shared
+	LDLIBS := -L$(CURDIR)/seanerbus-cpp/installlib -lseanerbus -lcapnp -lyaml-cpp -lkj -lkj-async -lpthread -ldl
+	CXXFLAGS :=-I$(CURDIR)/seanerbus-cpp/install/include -Wall -Wextra -Wpedantic -O2 -g -fPIC -shared
 else
 	ifeq ($(UNAME_S),Darwin)
 		LIB_EXT := dylib
@@ -19,9 +19,9 @@ else
 	else
 		LIB_EXT := so
 		LIBFLAGS := -shared -fPIC
-		LDLIBS := -L/home/di93zad/seanergys/telemetry-collector/install/capnp-0.8/lib/  -lcapnp  -L/home/di93zad/seanergys/telemetry-collector/install/yaml-cpp/lib64/ -lyaml-cpp -lkj -lpthread -ldl -L/home/di93zad/seanergys/dataplane/install_seanerbus/lib64 -lseanerbus
+		LDLIBS := -L/home/di93zad/seanergys/telemetry-collector/install/capnp-0.8/lib/  -lcapnp  -L/home/di93zad/seanergys/telemetry-collector/install/yaml-cpp/lib64/ -lyaml-cpp -lkj -lpthread -ldl -L/home/di75gix/seanerbus/bindings/cpp/install/lib64/ -lseanerbus
 		GTEST_LIBS := -L/usr/local/Cellar/googletest/1.17.0/lib -lgtest -lgtest_main -pthread
-		CXXFLAGS :=-I/home/di93zad/seanergys/dataplane/install_seanerbus/include -I/home/di93zad/seanergys/telemetry-collector/install/yaml-cpp/include/ -I/home/di93zad/seanergys/telemetry-collector/install/capnp-0.8/include/ -I/home/di93zad/seanergys/telemetry-collector/install/net-snmp/include -I/usr/local/Cellar/googletest/1.17.0/include  -Wall -Wextra -Wpedantic -O2 -g -fPIC
+		CXXFLAGS :=-I/home/di75gix/seanerbus/bindings/cpp/install/include -I/home/di93zad/seanergys/telemetry-collector/install/yaml-cpp/include/ -I/home/di93zad/seanergys/telemetry-collector/install/capnp-0.8/include/ -I/home/di93zad/seanergys/telemetry-collector/install/net-snmp/include -I/usr/local/Cellar/googletest/1.17.0/include  -Wall -Wextra -Wpedantic -O2 -g -fPIC
 
 		LDLIBS_SNMP:= -L/home/di93zad/seanergys/telemetry-collector/install/net-snmp/lib -lnetsnmp -lnetsnmpagent
 	endif

@@ -16,8 +16,9 @@
 #include "tester_plugin.hpp"
 
 #include <seanerbus/client/connection.hpp>
+
 #include "seanerbus/client/simple_event_loop.hpp"
-#include "seanerbus/helpers/noexcept.hpp"
+//#include "seanerbus/internal/message.hpp"
 
 #include <seanerbus/helpers/resolve.hpp>
 
@@ -111,7 +112,7 @@ bool tester_init_sensors(void *runtime)
     // Get the plugin config from runtime
 
     // Connect to the server.
-    seanerbus::client::req_res::Connection conn("demobus://localhost:5398");
+    seanerbus::client::Connection conn("demobus://localhost:5398", "demobus://localhost:5398");
 
     char hostname[HOST_NAME_MAX + 1];
     gethostname(hostname, sizeof(hostname));
@@ -133,7 +134,7 @@ bool tester_init_sensors(void *runtime)
         conf->name["hostname"] = std::string(hostname);
 
         seanerbus::resolve::register_resolve(conn, conf->name, addr,
-                                             [](seanerbus::client::req_res::Connection &conn,
+                                             [](seanerbus::client::Connection &conn,
                                                 seanerbus::Expected<void, seanerbus::Error> res)
                                              {
                                                  if (!res.ok())
@@ -143,11 +144,9 @@ bool tester_init_sensors(void *runtime)
                                                  }
                                              });
     }
-    seanerbus::client::SimpleEventLoop sel;
-
-    sel.register_req_res_connection(conn);
-
-    sel.run();
+    
+    seanerbus::client::SimpleEventLoop sl(conn);
+    sl.run();
 
     conn.shutdown();
     return true; // We're using the global map, not returning a pointer to sensors
@@ -239,10 +238,10 @@ struct CompareNextRun
     }
 };
 
-void read_publish_schedule_next(seanerbus::client::pub_sub::Connection &conn,
+void read_publish_schedule_next(seanerbus::client::Connection &conn,
                                 std::priority_queue<ScheduledSensor, std::vector<ScheduledSensor>, CompareNextRun> &queue);
 
-void on_publish(seanerbus::client::pub_sub::Connection &conn,
+void on_publish(seanerbus::client::Connection &conn,
                 std::priority_queue<ScheduledSensor, std::vector<ScheduledSensor>, CompareNextRun> &queue,
                 seanerbus::Expected<void, seanerbus::Error> err)
 {
@@ -255,7 +254,7 @@ void on_publish(seanerbus::client::pub_sub::Connection &conn,
     read_publish_schedule_next(conn, queue);
 }
 
-void read_publish_schedule_next(seanerbus::client::pub_sub::Connection &conn,
+void read_publish_schedule_next(seanerbus::client::Connection &conn,
                                 std::priority_queue<ScheduledSensor, std::vector<ScheduledSensor>, CompareNextRun> &queue)
 {
     auto s = queue.top();
@@ -280,7 +279,7 @@ void read_publish_schedule_next(seanerbus::client::pub_sub::Connection &conn,
     queue.push(s);
 
     conn.publish(msg_builder.to_message(addr),
-                 [&conn, &queue](seanerbus::client::pub_sub::Connection &c,
+                 [&conn, &queue](seanerbus::client::Connection &c,
                                  seanerbus::Expected<void, seanerbus::Error> e)
                  {
                      on_publish(c, queue, e);
@@ -302,11 +301,10 @@ void *tester_run(void *runtime)
                     s.second});
     }
 
-    seanerbus::client::pub_sub::Connection conn("demobus://localhost:5398");
+    seanerbus::client::Connection conn("demobus://localhost:5398", "demobus://localhost:5398");
     read_publish_schedule_next(conn, queue);
 
-    seanerbus::client::SimpleEventLoop sl;
-    sl.register_pub_sub_connection(conn);
+    seanerbus::client::SimpleEventLoop sl(conn);
     sl.run();
 
     if (!conn.result().ok())
