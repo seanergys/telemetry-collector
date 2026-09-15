@@ -15,7 +15,7 @@
 
 #include "tester_plugin.hpp"
 
-#include <seanerbus/client/pub_sub/connection.hpp>
+#include <seanerbus/client/connection.hpp>
 #include "seanerbus/client/simple_event_loop.hpp"
 #include "seanerbus/helpers/noexcept.hpp"
 
