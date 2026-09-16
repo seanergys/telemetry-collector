@@ -6,14 +6,20 @@ sensor_templates:
     interval_ms: 2000
     unit: "%"
     path: /proc/loadavg1 # for testing
+    name_part:
+      metric: loadavg
 
   temp: 
     interval_ms: 5000
     factor: 0.001
+    name_part:
+      metric: temp
 
   freq: 
     interval_ms: 1000
     unit: Hz
+    name_part:
+      metric: freq
 
 sensor_groups:
   loadavg:
@@ -28,29 +34,39 @@ sensor_groups:
         topic: load_1min
         description: "load 1 min"
         filter: '^(\d+\.\d+)'
+        name_part:
+          metric: sensor1
         
       - uuid: 5bc3d210-a49f-4422-8fe8-26ca480d0e1f
         topic: load_5min
         description: "load 5 min"
         filter: '^\d+\.\d+\s+(\d+\.\d+)'
-
+        name_part:
+          metric: sensor2
+ 
       - uuid: 10c3d210-a49f-4422-8fe8-26ca480d0e1f
         topic: load_15min
         description: "load 15 min"
         filter: '^\d+\.\d+\s+\d+\.\d+\s+(\d+\.\d+)'
-      
+        name_part:
+          metric: sensor3
+       
       - uuid: 11c3d210-a49f-4422-8fe8-26ca480d0e1f
         topic: running_procs
         description: "running procs"
         filter: '(\d+)/\d+'
-
+        name_part:
+          metric: sensor4
+ 
       - uuid: 12c3d210-a49f-4422-8fe8-26ca480d0e1f
         topic: total_procs
         interval_ms: 10000
         description: "total procs"
         unit: ""
         filter: '\d+/(\d+)'
-
+        name_part:
+          metric: sensor5
+ 
   frequency:
     template: freq
 
@@ -59,7 +75,9 @@ sensor_groups:
         topic: frequency1
         description: "frequency on core 0"
         path: /sys/devices/system/cpu/cpu0/cpufreq/scaling_cur_freq               
-
+        name_part:
+          metric: sensor6
+ 
   temperature:
     template: temp
     
@@ -70,9 +88,13 @@ sensor_groups:
         unit: kelvin
         path: /sys/devices/virtual/thermal/thermal_zone0/temp
         offset: 273.15
-        
+        name_part:
+          metric: sensor7
+         
       - uuid: 9bc3d210-a49f-4422-8fe8-26ca480d0e1f
         topic: temperature2
         description: "temperature on sock 1"
         unit: C
         path: /sys/devices/virtual/thermal/thermal_zone1/temp
+        name_part:
+          metric: sensor8
