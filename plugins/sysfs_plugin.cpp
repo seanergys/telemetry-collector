@@ -18,6 +18,8 @@
 #include <seanerbus/client/connection.hpp>
 #include "seanerbus/client/simple_event_loop.hpp"
 
+#include <seanerbus/helpers/resolve.hpp>
+
 static std::map<std::string, SensorReading *> sensor_values;
 
 // Global plugin instance
