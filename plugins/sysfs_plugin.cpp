@@ -9,6 +9,8 @@
 #include <algorithm>
 #include <map>
 #include <unistd.h>
+#include <limits.h>
+#include <bits/local_lim.h>
 
 #include <string>
 #include <fstream>
