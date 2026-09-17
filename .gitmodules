@@ -1,0 +1,3 @@
+[submodule "deps/seanerbus-cpp"]
+	path = deps/seanerbus-cpp
+	url = git@gitlab.seanergys.fz-juelich.de:software/seanerbus-cpp.git
