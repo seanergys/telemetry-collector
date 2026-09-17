@@ -8,6 +8,9 @@
 #include <queue>
 #include <algorithm>
 #include <map>
+#include <unistd.h>
+#include <limits.h>
+#include <bits/local_lim.h>
 
 #include <string>
 #include <fstream>
@@ -17,6 +20,8 @@
 
 #include <seanerbus/client/connection.hpp>
 #include "seanerbus/client/simple_event_loop.hpp"
+
+#include <seanerbus/helpers/resolve.hpp>
 
 static std::map<std::string, SensorReading *> sensor_values;
 
@@ -85,6 +90,16 @@ void applyFields(const YAML::Node &node, sensor_attribute_t *conf)
         conf->factor = node["factor"].as<double>();
     if (node["offset"])
         conf->offset = node["offset"].as<double>();
+
+    if (node["name_part"])
+    {
+	for (const auto & p : node["name_part"]) {
+    	    std::string k = p.first.as<std::string>();;
+    	    std::string v =p.second.as<std::string>();;
+            conf->name[k] = v;
+	}
+    }
+
 }
 
 bool applyTemplateConfigs(const YAML::Node &node, const YAML::Node &templates, sensor_attribute_t *conf)
@@ -109,6 +124,14 @@ bool applyTemplateConfigs(const YAML::Node &node, const YAML::Node &templates, s
 
 bool sysfs_init_sensors(void *runtime)
 {
+    // Get the plugin config from runtime
+
+    // Connect to the server.
+    seanerbus::client::Connection conn("demobus://localhost:5398", "demobus://localhost:5398");
+
+    char hostname[HOST_NAME_MAX + 1];
+    gethostname(hostname, sizeof(hostname));
+
     for (const auto &[uuid, conf] : configs)
     {
         sensor_t *sensor = new sensor_t();
@@ -120,10 +143,30 @@ bool sysfs_init_sensors(void *runtime)
         // Add to the global sensors map using UUID as key
         ::sensors[uuid] = sensor;
         sensor_values[conf->uuid] = new SensorReading{0, 0.0};
-    }
 
+        auto addr = seanerbus::msg::Address{seanerbus::msg::Uuid{conf->uuid}};
+
+        conf->name["hostname"] = std::string(hostname);
+
+        seanerbus::resolve::register_resolve(conn, conf->name, addr,
+                                             [](seanerbus::client::Connection &conn,
+                                                seanerbus::Expected<void, seanerbus::Error> res)
+                                             {
+                                                 if (!res.ok())
+                                                 {
+                                                     conn.shutdown();
+                                                     return true;
+                                                 }
+                                             });
+    }
+    
+    seanerbus::client::SimpleEventLoop sl(conn);
+    sl.run();
+
+    conn.shutdown();
     return true; // We're using the global map, not returning a pointer to sensors
 }
+
 
 bool sysfs_finit(void *runtime)
 {
