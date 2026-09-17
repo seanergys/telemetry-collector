@@ -136,6 +136,14 @@ bool tester_init_sensors(void *runtime)
 
         conf->name["hostname"] = std::string(hostname);
 
+        std::string name_str;
+        for (const auto &[k, v] : conf->name)
+        {
+            name_str += k + "=" + v + ",";
+        }
+        name_str.pop_back();
+        std::cout << "Registering sensor {" << name_str << "}: " << conf->uuid << std::endl;
+
         seanerbus::resolve::register_resolve(conn, conf->name, addr,
                                              [](seanerbus::client::Connection &conn,
                                                 seanerbus::Expected<void, seanerbus::Error> res)
