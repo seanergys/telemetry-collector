@@ -146,7 +146,7 @@ bool sysfs_init_sensors(void *runtime)
 
         auto addr = seanerbus::msg::Address{seanerbus::msg::Uuid{conf->uuid}};
 
-        conf->name["hostname"] = std::string(hostname);
+        conf->name["node"] = std::string(hostname);
 
         std::string name_str;
         for (const auto &[k, v] : conf->name)
