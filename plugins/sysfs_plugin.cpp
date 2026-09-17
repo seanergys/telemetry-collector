@@ -146,7 +146,15 @@ bool sysfs_init_sensors(void *runtime)
 
         auto addr = seanerbus::msg::Address{seanerbus::msg::Uuid{conf->uuid}};
 
-        conf->name["hostname"] = std::string(hostname);
+        conf->name["node"] = std::string(hostname);
+
+        std::string name_str;
+        for (const auto &[k, v] : conf->name)
+        {
+            name_str += k + "=" + v + ",";
+        }
+        name_str.pop_back();
+        std::cout << "Registering sensor {" << name_str << "}: " << conf->uuid << std::endl;
 
         seanerbus::resolve::register_resolve(conn, conf->name, addr,
                                              [](seanerbus::client::Connection &conn,
