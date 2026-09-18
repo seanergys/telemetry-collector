@@ -77,3 +77,6 @@ target_link_libraries(telemetry_collector PRIVATE
 set_target_properties(telemetry_collector PROPERTIES
     BUILD_RPATH "${SEANERBUS_LIBRARY_DIRS}"
 )
+
+include(GNUInstallDirs)
+install(TARGETS telemetry_collector RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
