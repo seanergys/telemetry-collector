@@ -126,6 +126,56 @@ function(dependency_get_libraries dep output_variable)
 
 endfunction()
 
+function(find_existing_dependency dep output_variable)
+
+    set(
+        package_name
+        "${DEPENDENCY_PROVIDER_${dep}}"
+    )
+
+    if(NOT package_name)
+
+        set(
+            ${output_variable}
+            FALSE
+            PARENT_SCOPE
+        )
+
+        return()
+
+    endif()
+
+    find_package(
+        "${package_name}"
+        CONFIG
+        QUIET
+    )
+
+    if(${package_name}_FOUND)
+
+        message(STATUS
+            "    using existing installation "
+            "(${package_name})"
+        )
+
+        set(
+            ${output_variable}
+            TRUE
+            PARENT_SCOPE
+        )
+
+    else()
+
+        set(
+            ${output_variable}
+            FALSE
+            PARENT_SCOPE
+        )
+
+    endif()
+
+endfunction()
+
 # ============================================================================
 # create_dependency_target()
 #
@@ -448,9 +498,18 @@ function(resolve_dependencies main_dependencies plugins)
                 "(${DEPENDENCY_${dep}_VERSION})"
             )
 
-            build_dependency(
+            find_existing_dependency(
                 "${dep}"
+                dependency_found
             )
+
+            if(NOT dependency_found)
+
+                build_dependency(
+                    "${dep}"
+                )
+
+            endif()
 
         endforeach()
 

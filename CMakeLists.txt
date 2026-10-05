@@ -19,6 +19,7 @@ list(
 
 include(DependencyResolver)
 include(Dependencies)
+include(DependencyProviders)
 include(PluginDependencies)
 include(Plugins)
 
