@@ -6,8 +6,8 @@
 #include <unordered_map>
 #include <vector>
 
-#include "../plugin.hpp"
-#include "../types.hpp"
+#include "plugin.hpp"
+#include "types.hpp"
 
 /* lifecycle */
 void *sysfs_create(void);

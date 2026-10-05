@@ -15,7 +15,7 @@
 
 #include "sysfs_plugin.hpp"
 
-#include <seanerbus/client/connection.hpp>
+#include "seanerbus/client/connection.hpp"
 #include "seanerbus/client/simple_event_loop.hpp"
 
 static std::map<std::string, SensorReading *> sensor_values;
