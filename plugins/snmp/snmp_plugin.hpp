@@ -8,8 +8,8 @@
 #include <net-snmp/net-snmp-config.h>
 #include <net-snmp/net-snmp-includes.h>
 
-#include "../plugin.hpp"
-#include "../types.hpp"
+#include "plugin.hpp"
+#include "types.hpp"
 
 /* lifecycle */
 void *snmp_create(void);

@@ -1,0 +1,193 @@
+diff --git a/Makefile b/Makefile
+index 0391e3c..3ea33bf 100644
+--- a/Makefile
++++ b/Makefile
+@@ -1,9 +1,7 @@
+-CC               = /bin/gcc
+-CC_FLAGS         = -I$(PWD)/src -I$(EAR_SRCDIR) -g
+-ROOT_SRCDIR      = $(shell pwd)
+-EAR_SRCDIR       = /home/jordi/Documents/git/ear_private/src
+-SEANERBUS_PREFIX = /home/jordi/Documents/opt/seanerbus
+-
++CC               = gcc
++CC_FLAGS         = -I$(PWD)/src -I$(EAR_SRCDIR) -g -I/home/di93zad/seanergys/telemetry-collector/install/capnp-0.8/include -MD -MT -fPIC
++EAR_SRCDIR       = /home/di93zad/seanergys/ear/src
++SEANERBUS_PREFIX = /home/di93zad/seanergys/dataplane/install_seanerbus2
+ all:
+ 	@ $(MAKE) -C 'src' all || exit
+ 
+diff --git a/run-data-plane.sh b/run-data-plane.sh
+index ba2b17d..58c30ac 100755
+--- a/run-data-plane.sh
++++ b/run-data-plane.sh
+@@ -15,4 +15,4 @@ PLUGINS+=",act.cpu_pow.msr.so"
+ # present in the code of each plugin.
+ ./src/accessd ${1} \
+     --paths=./src/plugins/general:./src/plugins/metrics:./src/plugins/knobs_actuators \
+-    --plugins=${PLUGINS}
++    --plugins=${PLUGINS} --verbose=4
+diff --git a/src/common/Makefile b/src/common/Makefile
+index e5ccee0..d835370 100644
+--- a/src/common/Makefile
++++ b/src/common/Makefile
+@@ -34,7 +34,7 @@ plugin_manager_internal.o: plugin_manager_internal.c plugin_manager_internal.h
+ 	$(CC) $(CC_FLAGS) -fPIC -DSEPARATOR="','" -c $< -o $@
+ 
+ libcommon.so: $(OBJS)
+-	$(CC) $(CC_FLAGS) -shared -o $@ $(OBJS)
++	$(CC) $(CC_FLAGS) -ldl -lm  -shared -o $@ $(OBJS)  
+ 
+ clean:
+ 	rm -f *.o *.so
+\ No newline at end of file
+diff --git a/src/common/framework.h b/src/common/framework.h
+index 6c16f69..5abf0ed 100644
+--- a/src/common/framework.h
++++ b/src/common/framework.h
+@@ -2,7 +2,14 @@
+ #define FRAMEWORK_H
+ 
+ #include <common/system/plugin_manager.h>
+-                                                        // Relevant arguments
++#ifdef __cplusplus
++extern "C"
++{
++#endif
++
++
++
++// Relevant arguments
+ #define plug_identity          declr_up_get_tag         // (cchar **tag, cchar **tags_deps)
+ #define plug_init              declr_up_action_init     // (void **data_alloc, void *data)
+ #define plug_periodic          declr_up_action_periodic // (void *data)
+@@ -10,4 +17,8 @@
+ #define plug_message_send      plugin_manager_message_send // (void *data)
+ #define plug_message_send_each plugin_manager_message_send_each // (void **data)
+ 
++#ifdef __cplusplus
++} // extern "C"
++#endif
++
+ #endif // FRAMEWORK_H
+\ No newline at end of file
+diff --git a/src/plugins/general/Makefile b/src/plugins/general/Makefile
+index b234ae3..ea3d943 100644
+--- a/src/plugins/general/Makefile
++++ b/src/plugins/general/Makefile
+@@ -32,9 +32,10 @@ all: $(OBJS)
+ 	$(CC) $(CC_FLAGS) -fPIC -shared -o $@ $^
+ 
+ data_plane.so: data_plane.cpp
+-	$(CXX) $(CC_FLAGS) -I$(SEANERBUS_PREFIX)/include \
+-		-std=c++17 -Wno-write-strings -fPIC -shared -o $@ $< \
+-		-Wl,-rpath,\$(SEANERBUS_PREFIX)/lib $(SEANERBUS_PREFIX)/lib/libseanerbus.so
++	$(CXX) $(CC_FLAGS) -I$(SEANERBUS_PREFIX)/include   \
++		-Wno-write-strings -fPIC -shared -o $@ $< \
++		-Wl,-rpath,\$(SEANERBUS_PREFIX)/lib64 $(SEANERBUS_PREFIX)/lib64/libseanerbus.so -Wl,-rpath,/home/di93zad/seanergys/telemetry-collector/install/capnp-0.8/lib /home/di93zad/seanergys/telemetry-collector/install/capnp-0.8/lib/libkj-0.8.0.so /home/di93zad/seanergys/telemetry-collector/install/capnp-0.8/lib/libcapnp-0.8.0.so
++
+ 
+ topology_ext.so: $(TOPO_OBJS)
+ 	$(CC) $(CC_FLAGS) -fPIC -shared -o $@ topology_ext.c $(TOPO_OBJS)
+diff --git a/src/plugins/general/data_plane.cpp b/src/plugins/general/data_plane.cpp
+index e9fb1f1..d6edfa2 100644
+--- a/src/plugins/general/data_plane.cpp
++++ b/src/plugins/general/data_plane.cpp
+@@ -13,6 +13,10 @@
+ #include <seanerbus/msg/hello_world_req_v1.hpp>
+ #include <seanerbus/msg/hello_world_res_v1.hpp>
+ 
++#include <iostream>
++
++
++
+ #define SEA_DEFAULT_HOST   "localhost"
+ #define SEA_DEFAULT_PORT   "5398"
+ #define SEA_DEFAULT_UUID   "a366335b-52f0-4658-a42b-7e73e83ec91f"
+@@ -48,6 +52,29 @@ static const char *envordef(const char *name, const char *fallback)
+ | HISTORY_REQ_V1            | HistoryReqV1 { address, startTime: Int64, endTime: Int64, intervalMax: Int64, type: HistoryType }
+ | HISTORY_RES_V1            | HistoryResV1 { okOrErr: union { ok: History, err: Text } }
+ */
++
++
++extern "C"
++{
++
++
++
++const std::unordered_map<std::string, std::string> TOPIC_UUIDS = {
++    { "a366335b-52f0-4658-a42b-7e73e83ec911", "met freq cpu 0 get" },
++    { "a366335b-52f0-4658-a42b-7e73e83ec912", "met freq cpu 1 get" },
++};
++
++const std::string& get_uuid(const std::string& topic) {
++	/*
++	
++	TODO: Manual mapping as of now
++	*/
++    static const std::string empty;
++    auto it = TOPIC_UUIDS.find(topic);
++    return it != TOPIC_UUIDS.end() ? it->second : empty;
++}
++
++
+ static void request_handler(seanerbus::client::Connection& conn, seanerbus::Message msg)
+ {
+     request_text_t req_text = {0};
+@@ -65,14 +92,24 @@ static void request_handler(seanerbus::client::Connection& conn, seanerbus::Mess
+     }
+     //
+     DpTextReq req(msg.payload);
+-    req_text.input = (char *) req.str_msg.c_str();
+-    plug_message_send("request_text", (void *) &req_text);
++
++
++    // get command i.e. uuid -> command
++    std::string cmd = get_uuid(req.str_msg);
++   
++    std::cout << "Command: " << cmd << "\n";
++
++    req_text.input = const_cast<char*>(cmd.c_str());
++
++    plug_message_send("request_text", (void *) &req_text.input);
++
+     DpTextRes res(req_text.output);
+     conn.respond_to(msg, res.to_capnp());
++   
++
++    
+ }
+ 
+-extern "C"
+-{
+ plug_identity() {
+     *tag = "data_plane";
+     *tags_deps = NULL;
+@@ -85,6 +122,7 @@ plug_init(_data_plane)
+     const char *port = envordef("SEA_PORT", SEA_DEFAULT_PORT);
+ 
+     thread_unblock = 0;
++
+     // Initializing thread that will be dettached from the main thread
+     std::thread([uuid, host, port]() {
+         try {
+@@ -94,6 +132,7 @@ plug_init(_data_plane)
+             // TODO: ask the Seanerbus for the list of plugins to load
+             seanerbus::client::SimpleEventLoop sel(conn);
+             thread_unblock = 1;
++
+             /* Chain:
+                 -> sel.run()
+                  -> connection_.try_read()
+diff --git a/src/plugins/metrics/cpu_pow.msr.c b/src/plugins/metrics/cpu_pow.msr.c
+index 1a418ed..c3a0216 100644
+--- a/src/plugins/metrics/cpu_pow.msr.c
++++ b/src/plugins/metrics/cpu_pow.msr.c
+@@ -86,7 +86,7 @@ plug_init(_topology_ext)
+         ctxs[DEV_PKG].addr_stat = pkg; \
+         ctxs[DEV_PP0].addr_stat = pp0; \
+     }
+-    if (tp->vendor == VENDOR_INTEL && tp->model >= MODEL_TIGERLAKE) {
++    if (tp->vendor == NULL && tp->model >= MODEL_ICELAKE) {
+         ADDR_INIT(0x00000606, 0x00000611, 0x619, 0x00000639, 0x641);
+     } else if (tp->vendor == VENDOR_AMD && tp->family >= FAMILY_ZEN) {
+         ADDR_INIT(0xc0010299, 0xc001029B, 0x000, 0xc001029A, 0x000);
