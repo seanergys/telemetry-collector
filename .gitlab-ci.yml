@@ -37,8 +37,9 @@ build:
   script:
     - ls
     - apt-get update && apt-get install -y git cmake capnproto libcapnp-dev build-essential libyaml-cpp-dev snmp snmpd libsnmp-dev  catch2 libcatch2-dev pkg-config 
-    - export make_for="CI"
-    - make -j 
+    - mkdir build
+    - cd build
+    - cmake -DPLUGINS="tester;sysfs;mock" -DSEANERBUS_ROOT=../seanerbus-cpp -DCAPNP_ROOT=/usr -DCMAKE_INSTALL_PREFIX=../install ..
     - ls
   artifacts:
     paths:
