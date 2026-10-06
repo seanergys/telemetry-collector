@@ -1,11 +1,7 @@
 cmake_minimum_required(VERSION 3.13)
 
-project(
-    telemetry_collector
-    VERSION 0.1
-    DESCRIPTION "SEANERGYS Telemetry Collector"
-    LANGUAGES CXX
-)
+project(telemetry_collector VERSION 0.1
+        DESCRIPTION "SEANERGYS Telemetry Collector" LANGUAGES CXX)
 
 list(PREPEND CMAKE_MODULE_PATH "${PROJECT_SOURCE_DIR}/cmake")
 
@@ -91,21 +87,19 @@ add_executable(
     ${TELEMETRY_COLLECTOR_SOURCES}
 )
 
-target_compile_features(
-    telemetry_collector
-    PRIVATE cxx_std_20
-)
+target_compile_features(telemetry_collector PRIVATE cxx_std_20)
 
 target_compile_options(
-    telemetry_collector
-    PRIVATE -Wall -Wextra -Wpedantic $<$<CONFIG:Debug>:-O0;-g> $<$<CONFIG:Release>:-O3>
-            $<$<CONFIG:RelWithDebInfo>:-O2;-g>
-)
+  telemetry_collector
+  PRIVATE -Wall
+          -Wextra
+          -Wpedantic
+          $<$<CONFIG:Debug>:-O0;-g>
+          $<$<CONFIG:Release>:-O3>
+          $<$<CONFIG:RelWithDebInfo>:-O2;-g>)
 
-target_include_directories(
-    telemetry_collector
-    PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/include"
-)
+target_include_directories(telemetry_collector
+                           PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/include")
 
 
 # ============================================================================
@@ -148,10 +142,8 @@ target_link_libraries(
         ${CMAKE_DL_LIBS}
 )
 
-set_target_properties(
-    telemetry_collector
-    PROPERTIES BUILD_RPATH "${SEANERBUS_LIBRARY_DIRS}"
-)
+set_target_properties(telemetry_collector
+                      PROPERTIES BUILD_RPATH "${SEANERBUS_LIBRARY_DIRS}")
 
 target_compile_definitions(telemetry_collector PUBLIC SPDLOG_FMT_EXTERNAL)
 
@@ -161,10 +153,7 @@ target_link_libraries(telemetry_collector PRIVATE PkgConfig::UUID)
 # Plugins
 # ============================================================================
 
-foreach(
-    plugin IN
-    LISTS SELECTED_PLUGINS
-)
+foreach(plugin IN LISTS SELECTED_PLUGINS)
 
     add_library(
         "${plugin}"
@@ -174,10 +163,7 @@ foreach(
 	    ${CMAKE_SOURCE_DIR}/src/logger.cpp # common functionalities between the TC and the plugins -> maybe separate this into common?
     )
 
-    set_target_properties(
-        "${plugin}"
-        PROPERTIES PREFIX ""
-    )
+  set_target_properties("${plugin}" PROPERTIES PREFIX "")
 
     target_compile_definitions("${plugin}" PUBLIC SPDLOG_FMT_EXTERNAL)
     
@@ -189,7 +175,7 @@ foreach(
             "${UUID_INCLUDEDIR}"
     )
 
-    plugin_get_dependencies("${plugin}" plugin_dependencies)
+  plugin_get_dependencies("${plugin}" plugin_dependencies)
 
     target_link_libraries(
         "${plugin}"
