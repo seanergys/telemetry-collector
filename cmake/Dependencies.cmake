@@ -7,6 +7,7 @@ include_guard(GLOBAL)
 set(DEPENDENCIES
     net-snmp
     yaml-cpp
+    spdlog
 )
 
 # ============================================================================
@@ -37,4 +38,21 @@ dependency(
     GIT_TAG 0.8.0
     BUILD_TOOL cmake
     LIBRARIES yaml-cpp
+)
+
+# ============================================================================
+# spdlog
+# ============================================================================
+
+dependency(
+    NAME spdlog
+    VERSION 1.17.0
+    GIT_REPOSITORY
+        https://github.com/gabime/spdlog.git
+    GIT_TAG
+        v1.17.0
+    BUILD_TOOL
+        cmake
+    LIBRARIES
+        spdlog
 )
