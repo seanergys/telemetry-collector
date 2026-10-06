@@ -7,11 +7,7 @@ project(
     LANGUAGES CXX
 )
 
-list(
-    PREPEND
-    CMAKE_MODULE_PATH
-    "${PROJECT_SOURCE_DIR}/cmake"
-)
+list(PREPEND CMAKE_MODULE_PATH "${PROJECT_SOURCE_DIR}/cmake")
 
 # ============================================================================
 # CMake modules
@@ -27,8 +23,7 @@ include(Plugins)
 # Main dependency selection
 # ============================================================================
 
-set(
-    MAIN_DEPENDENCIES
+set(MAIN_DEPENDENCIES
     yaml-cpp
 )
 
@@ -38,91 +33,64 @@ set(
 
 add_executable(
     telemetry_collector
-    src/telemetry-collector.cpp
-    src/pluginManager.cpp
-    src/config.cpp
+    src/telemetry-collector.cpp src/pluginManager.cpp src/config.cpp
 )
 
 target_compile_features(
     telemetry_collector
-    PRIVATE
-        cxx_std_20
+    PRIVATE cxx_std_20
 )
 
 target_compile_options(
     telemetry_collector
-    PRIVATE
-        -Wall
-        -Wextra
-        -Wpedantic
-        $<$<CONFIG:Debug>:-O0;-g>
-        $<$<CONFIG:Release>:-O3>
-        $<$<CONFIG:RelWithDebInfo>:-O2;-g>
+    PRIVATE -Wall -Wextra -Wpedantic $<$<CONFIG:Debug>:-O0;-g> $<$<CONFIG:Release>:-O3>
+            $<$<CONFIG:RelWithDebInfo>:-O2;-g>
 )
 
 target_include_directories(
     telemetry_collector
-    PRIVATE
-        "${CMAKE_CURRENT_SOURCE_DIR}/include"
+    PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/include"
 )
 
 # ============================================================================
 # seanerbus / capnp
 # ============================================================================
 
-set(
-    SEANERBUS_ROOT
+set(SEANERBUS_ROOT
     ""
-    CACHE PATH
-    "Root installation path of seanerbus"
+    CACHE PATH "Root installation path of seanerbus"
 )
 
 if(NOT SEANERBUS_ROOT)
 
-    message(FATAL_ERROR
-        "SEANERBUS_ROOT must be specified, "
-        "e.g. -DSEANERBUS_ROOT=/path/to/seanerbus/install"
+    message(FATAL_ERROR "SEANERBUS_ROOT must be specified, "
+                        "e.g. -DSEANERBUS_ROOT=/path/to/seanerbus/install"
     )
 
 endif()
 
-set(
-    CAPNP_ROOT
+set(CAPNP_ROOT
     ""
-    CACHE PATH
-    "Root installation path of capnp"
+    CACHE PATH "Root installation path of capnp"
 )
 
 if(NOT CAPNP_ROOT)
 
-    message(FATAL_ERROR
-        "CAPNP_ROOT must be specified, "
-        "e.g. -DCAPNP_ROOT=/path/to/capnp/install"
-    )
+    message(FATAL_ERROR "CAPNP_ROOT must be specified, " "e.g. -DCAPNP_ROOT=/path/to/capnp/install")
 
 endif()
 
-find_package(
-    PkgConfig
-    REQUIRED
-)
+find_package(PkgConfig REQUIRED)
 
-set(
-    ENV{PKG_CONFIG_PATH}
+set(ENV{PKG_CONFIG_PATH}
     "${SEANERBUS_ROOT}/lib64/pkgconfig:${CAPNP_ROOT}/lib/pkgconfig:$ENV{PKG_CONFIG_PATH}"
 )
 
 message(
-    STATUS
-    "PKG_CONFIG_PATH = $ENV{PKG_CONFIG_PATH}"
+    STATUS "PKG_CONFIG_PATH = $ENV{PKG_CONFIG_PATH}"
 )
 
-pkg_check_modules(
-    SEANERBUS
-    REQUIRED
-    IMPORTED_TARGET
-    seanerbus
-)
+pkg_check_modules(SEANERBUS REQUIRED IMPORTED_TARGET seanerbus)
 
 # ============================================================================
 # Plugins
@@ -136,16 +104,13 @@ select_plugins()
 #
 # This resolves dependencies required by BOTH:
 #
-#   - telemetry_collector
-#   - selected plugins
+# * telemetry_collector
+# * selected plugins
 #
 # Duplicate dependencies are built only once.
 # ============================================================================
 
-resolve_dependencies(
-    "${MAIN_DEPENDENCIES}"
-    "${SELECTED_PLUGINS}"
-)
+resolve_dependencies("${MAIN_DEPENDENCIES}" "${SELECTED_PLUGINS}")
 
 # ============================================================================
 # Main target dependencies
@@ -153,61 +118,54 @@ resolve_dependencies(
 
 target_link_libraries(
     telemetry_collector
-    PRIVATE
-        PkgConfig::SEANERBUS
-        yaml-cpp::yaml-cpp
-        ${CMAKE_DL_LIBS}
+    PRIVATE PkgConfig::SEANERBUS yaml-cpp::yaml-cpp ${CMAKE_DL_LIBS}
 )
 
 set_target_properties(
     telemetry_collector
-    PROPERTIES
-        BUILD_RPATH "${SEANERBUS_LIBRARY_DIRS}"
+    PROPERTIES BUILD_RPATH "${SEANERBUS_LIBRARY_DIRS}"
 )
 
 # ============================================================================
 # Plugins
 # ============================================================================
 
-foreach(plugin IN LISTS SELECTED_PLUGINS)
+foreach(
+    plugin IN
+    LISTS SELECTED_PLUGINS
+)
 
     add_library(
-        "${plugin}"
-        SHARED
-            "plugins/${plugin}/${plugin}_plugin.cpp"
-            ${COMMON_SOURCES}
+        "${plugin}" SHARED
+        "plugins/${plugin}/${plugin}_plugin.cpp" ${COMMON_SOURCES}
     )
 
     set_target_properties(
         "${plugin}"
-        PROPERTIES
-            PREFIX ""
+        PROPERTIES PREFIX ""
     )
 
     target_include_directories(
         "${plugin}"
-        PRIVATE
-            "${CMAKE_CURRENT_SOURCE_DIR}/include"
-            "${CMAKE_CURRENT_SOURCE_DIR}/plugins/${plugin}"
+        PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/include"
+                "${CMAKE_CURRENT_SOURCE_DIR}/plugins/${plugin}"
     )
 
-    plugin_get_dependencies(
-        "${plugin}"
-        plugin_dependencies
-    )
+    plugin_get_dependencies("${plugin}" plugin_dependencies)
 
     target_link_libraries(
         "${plugin}"
-        PRIVATE
-            PkgConfig::SEANERBUS
+        PRIVATE PkgConfig::SEANERBUS
     )
 
-    foreach(dep IN LISTS plugin_dependencies)
+    foreach(
+        dep IN
+        LISTS plugin_dependencies
+    )
 
         target_link_libraries(
             "${plugin}"
-            PRIVATE
-                "${dep}::${dep}"
+            PRIVATE "${dep}::${dep}"
         )
 
     endforeach()
@@ -221,15 +179,11 @@ endforeach()
 include(GNUInstallDirs)
 
 install(
-    TARGETS
-        telemetry_collector
-    RUNTIME DESTINATION
-        ${CMAKE_INSTALL_BINDIR}
+    TARGETS telemetry_collector
+    RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
 )
 
 install(
-    TARGETS
-        ${SELECTED_PLUGINS}
-    LIBRARY DESTINATION
-        ${CMAKE_INSTALL_LIBDIR}/telemetry_collector/plugins
+    TARGETS ${SELECTED_PLUGINS}
+    LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}/telemetry_collector/plugins
 )
