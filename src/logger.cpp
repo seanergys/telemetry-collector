@@ -9,6 +9,10 @@
 #include <spdlog/sinks/stdout_sinks.h>
 #include <spdlog/sinks/stdout_color_sinks.h>
 
+std::shared_ptr<spdlog::details::thread_pool>
+    Logger::thread_pool =
+        std::make_shared<spdlog::details::thread_pool>(8192, 1);
+
 namespace {
 
 /*
@@ -73,10 +77,7 @@ Logger::Logger()
      * There should be only one owner responsible for calling
      * init_thread_pool().
      */
-    spdlog::init_thread_pool(
-        8192,
-        1
-    );
+     //thread_pool = std::make_shared<spdlog::details::thread_pool>(8192, 1);
 
     /*
      * Actual output sinks.
@@ -211,7 +212,7 @@ Logger::LoggerPtr Logger::create(const std::string& name)
         name,
         sinks_.begin(),
         sinks_.end(),
-        spdlog::thread_pool(),
+        thread_pool,
 
         /*
          * For a telemetry collector I prefer overrun_oldest.

@@ -183,6 +183,7 @@ foreach(plugin IN LISTS SELECTED_PLUGINS)
         SHARED
             "plugins/${plugin}/${plugin}_plugin.cpp"
             ${COMMON_SOURCES}
+	    ${CMAKE_SOURCE_DIR}/src/logger.cpp # common functionalities between the TC and the plugins -> maybe separate this into common?
     )
 
     set_target_properties(
@@ -207,6 +208,7 @@ foreach(plugin IN LISTS SELECTED_PLUGINS)
         "${plugin}"
         PRIVATE
             PkgConfig::SEANERBUS
+            spdlog::spdlog
     )
 
     foreach(dep IN LISTS plugin_dependencies)

@@ -47,12 +47,8 @@ dependency(
 dependency(
     NAME spdlog
     VERSION 1.17.0
-    GIT_REPOSITORY
-        https://github.com/gabime/spdlog.git
-    GIT_TAG
-        v1.17.0
-    BUILD_TOOL
-        cmake
-    LIBRARIES
-        spdlog
+    GIT_REPOSITORY https://github.com/gabime/spdlog.git
+    GIT_TAG v1.17.0
+    BUILD_TOOL cmake
+    LIBRARIES spdlog
 )

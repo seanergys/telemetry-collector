@@ -38,4 +38,5 @@ public:
 
 private:
     std::vector<spdlog::sink_ptr> sinks_;
+    static std::shared_ptr<spdlog::details::thread_pool> thread_pool;
 };

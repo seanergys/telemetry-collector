@@ -24,6 +24,8 @@
 #include <seanerbus/helpers/resolve.hpp>
 
 static std::map<std::string, SensorReading *> sensor_values;
+static Logger logging;
+static std::shared_ptr<spdlog::logger> logger;
 
 // Global plugin instance
 plugin_interface_t plugin =

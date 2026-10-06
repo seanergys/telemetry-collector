@@ -9,6 +9,7 @@
 #include <net-snmp/net-snmp-config.h>
 #include <net-snmp/net-snmp-includes.h>
 
+#include "logger.hpp"
 #include "plugin.hpp"
 #include "types.hpp"
 
@@ -66,8 +67,6 @@ struct SensorReading
 
 std::map<std::string, sensor_attribute_t *> configs; // uuid -> configs
 std::map<std::string, sensor_t *> sensors;           // uuid -> sensors
-Logger logging;
-std::shared_ptr<spdlog::logger> logger; /* logger */
 
 /* exported plugin descriptor */
 extern "C" plugin_interface_t plugin;

@@ -1,4 +1,4 @@
-j#pragma once
+#pragma once
 
 #include <atomic>
 #include <chrono>

@@ -43,6 +43,7 @@ int main(
 
     if (argc != 2)
     {
+        logger->set_pattern("%v");
         logger->error("usage: {} <config.yaml>", argv[0]);
         return 1;
     }

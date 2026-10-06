@@ -270,7 +270,7 @@ bool PluginManager::init_plugin(
     }
 
     // Create logger for the plugin
-    runtime->logger = logging.create(std::string("plugin.") + uuid);
+    logger = logging.create(std::string("plugin.") + uuid);
 
     // Initialize sensors if the function is implemented
     if (runtime->plugin->init_sensors)

@@ -117,7 +117,7 @@ bool applyTemplateConfigs(const YAML::Node &node, const YAML::Node &templates, s
 
     if (!tmpl)
     {
-        runtime->logger->warn("Unknown template referenced: '{}'", tmplName);
+        logger->warn("Unknown template referenced: '{}'", tmplName);
         return false;
     }
 
