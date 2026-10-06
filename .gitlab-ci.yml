@@ -40,6 +40,7 @@ build:
     - mkdir build
     - cd build
     - cmake -DPLUGINS="tester;sysfs;mock" -DSEANERBUS_ROOT=../seanerbus-cpp/install -DCAPNP_ROOT=/usr -DCMAKE_INSTALL_PREFIX=../install ..
+    - make -j
     - ls
   artifacts:
     paths:
