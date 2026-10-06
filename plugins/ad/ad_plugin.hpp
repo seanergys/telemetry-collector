@@ -41,6 +41,7 @@ struct SensorReading
 
 std::map<std::string, sensor_attribute_t*> configs; // uuid -> configs
 std::map<std::string, sensor_t*> sensors; // uuid -> sensors
+Logger logging;
 std::shared_ptr<spdlog::logger> logger; /* logger */
 
 /* exported plugin descriptor */

@@ -385,5 +385,3 @@ bool tester_free_config(void *config)
     }
     return true;
 }
-}
-}
