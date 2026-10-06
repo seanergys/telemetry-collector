@@ -1,3 +1,4 @@
+#include "logger.hpp"
 #include "config.hpp"
 #include "pluginManager.hpp"
 
@@ -57,11 +58,15 @@ int main(
     auto plugin_configs =
         load_tc_config(argv[1]);
 
+    Logger logging;
+    auto logger = logging.create("telemetry-collector");
+
     for (const auto &conf : plugin_configs)
     {
         try
         {
-            std::cout << "Loading" << conf.path << ", " << conf.config << ", " << conf.uuid << ", " << conf.name << std::endl;;
+	    logger->info("Loading {}, {}, {}, {}", conf.path, conf.config, conf.uuid, conf.name);
+
             if (!manager.load_plugin(conf.path, conf.config, conf.uuid))
             {
                 std::cerr << "Failed to load " << conf.path << ", " << conf.config << ", " << conf.uuid << ", " << conf.name << std::endl;;

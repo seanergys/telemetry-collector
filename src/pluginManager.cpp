@@ -11,6 +11,9 @@
 
 #include <dlfcn.h>
 
+#include <spdlog/fmt/fmt.h>
+#include <spdlog/fmt/ranges.h>
+
 namespace
 {
     constexpr uint32_t PLUGIN_VERSION = 1;
@@ -535,32 +538,26 @@ void PluginManager::print_loaded_plugins() const
 {
     if (runtimes.empty())
     {
-        std::cout << "No plugins loaded" << std::endl;
+	logger->info("No plugins loaded");
         return;
     }
 
-    std::cout << "Loaded plugins:" << std::endl;
+    logger->info("Loaded plugins:");
     for (const auto &pair : runtimes)
     {
-        std::cout << "  UUID: " << pair.first;
+        logger->info("  UUID: ");
         // Note: config.name is no longer directly accessible in runtime_t
         // It would be in the plugin-specific config object pointed to by plugin->config
         // Add capabilities
         auto capabilities = get_plugin_capabilities(pair.first.c_str());
-        if (!capabilities.empty())
-        {
-            std::cout << ", Capabilities: ";
-            for (size_t i = 0; i < capabilities.size(); ++i)
-            {
-                std::cout << capabilities[i];
-                if (i < capabilities.size() - 1)
-                {
-                    std::cout << ", ";
-                }
-            }
-        }
 
-        std::cout << std::endl;
+        if (!capabilities.empty())
+	{
+	    logger->info(
+            "Capabilities: {}",
+            fmt::join(capabilities, ", ")
+		);
+	}
     }
 }
 
