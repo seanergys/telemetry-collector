@@ -54,7 +54,8 @@ test:
   image: debian:testing-slim
   stage: test
   script:
-    - test -f telemetry-collector || -f plugins/sysfs.so || test -f plugins/tester.so || exit 1
+    - cd build
+    - test -f telemetry-collector || test -f tester.so || -f sysfs.so || -f snmp.so  || exit 1
   artifacts:
     paths:
       - "**/*"
