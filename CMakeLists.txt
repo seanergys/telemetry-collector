@@ -112,6 +112,7 @@ find_package(
 #     "${SEANERBUS_ROOT}/lib6/pkgconfig:${CAPNP_ROOT}/lib/pkgconfig:$ENV{PKG_CONFIG_PATH}"
 # )
 
+list(APPEND CMAKE_PREFIX_PATH "${SEANERBUS_ROOT}" "${CAPNP_ROOT}")
 
 message(
     STATUS
