@@ -14,7 +14,7 @@ pkgdeps:
   script:    
     - ls
     - pwd
-    - apt-get update && apt-get install -y git cmake capnproto libcapnp-dev build-essential libyaml-cpp-dev snmp snmpd libsnmp-dev  catch2 libcatch2-dev pkg-config 
+    - apt-get update && apt-get install -y git cmake capnproto libcapnp-dev build-essential libyaml-cpp-dev snmp snmpd libsnmp-dev  catch2 libcatch2-dev pkg-config  file
     - rm -rf seanerbus-cpp
     - git clone https://software_token:$software_token@gitlab.seanergys.fz-juelich.de/software/seanerbus-cpp.git
     - cd seanerbus-cpp
@@ -38,7 +38,7 @@ build:
   needs: ["pkgdeps"]
   script:
     - ls
-    - apt-get update && apt-get install -y git cmake capnproto libcapnp-dev build-essential libyaml-cpp-dev snmp snmpd libsnmp-dev  catch2 libcatch2-dev pkg-config 
+    - apt-get update && apt-get install -y git cmake capnproto libcapnp-dev build-essential libyaml-cpp-dev snmp snmpd libsnmp-dev  catch2 libcatch2-dev pkg-config file 
     - mkdir build
     - cd build
     - cmake -DPLUGINS="tester;sysfs;mock" -DSEANERBUS_ROOT=../seanerbus-cpp/install -DCAPNP_ROOT=/usr -DCMAKE_INSTALL_PREFIX=../install ..
