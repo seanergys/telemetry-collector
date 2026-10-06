@@ -39,9 +39,9 @@ build:
   script:
     - ls
     - apt-get update && apt-get install -y git cmake capnproto libcapnp-dev build-essential libyaml-cpp-dev snmp snmpd libsnmp-dev  catch2 libcatch2-dev pkg-config file 
-    - rm -r build && mkdir build && cd build
+    - mkdir build && cd build
     - cmake -DPLUGINS="tester;sysfs;mock" -DSEANERBUS_ROOT=../seanerbus-cpp/install -DCAPNP_ROOT=/usr -DCMAKE_INSTALL_PREFIX=../install ..
-    - make -j
+    - make -j$(nproc)
     - ls
   artifacts:
     paths:
