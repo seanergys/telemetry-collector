@@ -8,47 +8,54 @@
 #include <queue>
 #include <algorithm>
 #include <map>
-
+#include <vector>
 #include <string>
 #include <fstream>
 #include <regex>
+#include <cassert>
 
-#include "sysfs_plugin.hpp"
+#include "ad_plugin.hpp"
 
-#include <seanerbus/client/connection.hpp>
+//#include <seanerbus/msg/hello_world_req_v1.hpp>
+//#include <seanerbus/msg/hello_world_res_v1.hpp>
+
 #include "seanerbus/client/simple_event_loop.hpp"
+#include <seanerbus/client/connection.hpp>
+#include <seanerbus/msg/message.hpp>
+#include <seanerbus/helpers/resolve.hpp>
 
-static std::map<std::string, SensorReading *> sensor_values;
+static std::map<std::string, SensorReading *> sensor_values = {};
 
 // Global plugin instance
 plugin_interface_t plugin =
     {
         1, // version
-        sysfs_create,
-        sysfs_destroy,
-        sysfs_init_sensors,
+        ad_create,
+        ad_destroy,
+        ad_init_sensors,
         nullptr, // init_actors
-        sysfs_finit,
+        ad_finit,
+	nullptr,
         nullptr,
-        nullptr,
-        sysfs_run,          // run function
-        nullptr,            // req
-        nullptr,            // res
-        sysfs_configurator, // configurator function
-        sysfs_free_config,  // free_config function
+        ad_run,          // run function
+        nullptr,         // req
+        nullptr,         // res
+        ad_configurator, // configurator function
+        ad_free_config,  // free_config function
 };
+
 
 void *sensor_sense(void *sensor);
 
 // Global sensor values map for the sense function
 
-void *sysfs_create(void)
+void *ad_create(void)
 {
     // Return a pointer to the plugin_interface_t object as the instance
     return &plugin;
 }
 
-bool sysfs_destroy(void *runtime)
+bool ad_destroy(void *runtime)
 {
     // The plugin_interface_t object is statically allocated, so we don't free it
     // Just clean up any resources if needed
@@ -77,8 +84,8 @@ void applyFields(const YAML::Node &node, sensor_attribute_t *conf)
         setCharField(conf->description, node["description"].as<std::string>());
     if (node["unit"])
         setCharField(conf->unit, node["unit"].as<std::string>());
-    if (node["path"])
-        setCharField(conf->path, node["path"].as<std::string>());
+    if (node["connection_uuid"])
+        setCharField(conf->connection_uuid, node["connection_uuid"].as<std::string>());
     if (node["filter"])
         setCharField(conf->filter, node["filter"].as<std::string>());
     if (node["factor"])
@@ -107,7 +114,7 @@ bool applyTemplateConfigs(const YAML::Node &node, const YAML::Node &templates, s
     return true;
 }
 
-bool sysfs_init_sensors(void *runtime)
+bool ad_init_sensors(void *runtime)
 {
     for (const auto &[uuid, conf] : configs)
     {
@@ -125,7 +132,7 @@ bool sysfs_init_sensors(void *runtime)
     return true; // We're using the global map, not returning a pointer to sensors
 }
 
-bool sysfs_finit(void *runtime)
+bool ad_finit(void *runtime)
 {
     for (auto &pair : ::configs)
     {
@@ -182,52 +189,68 @@ double _applyFactorOffset(double value, double factor, double offset)
     return (value * factor) + offset;
 }
 
-void getPayload(sensor_attribute_t *conf, SensorReading *tv)
+
+void req_handler(seanerbus::client::Connection& conn, seanerbus::Expected<seanerbus::msg::Message, seanerbus::Error> res)
 {
 
-    FILE *fp = fopen(conf->path, "r");
-    if (fp == nullptr)
+    if (!res.ok())
     {
-        std::cout << "Error opening file: " << conf->path
-                  << " error: " << strerror(errno) << std::endl;
+        auto err = res.unwrap_error();
+        std::cerr << "Failed to listen for requests: " << err.what() << std::endl;
+        conn.shutdown(seanerbus::Unexpected(err));
+        return;
     }
 
-    char buf[1024];
-    if (fgets(buf, sizeof(buf), fp) == nullptr)
-    {
-        std::cout << "Error reading line from: " << conf->path << std::endl;
-        fclose(fp);
-    }
-    fclose(fp);
+    auto msg = std::move(res.unwrap_ok());
 
-    // strip trailing newline, if present
-    size_t len = strlen(buf);
-    if (len > 0 && buf[len - 1] == '\n')
+    if (msg.payload_type() != HelloWorldResV1::TYPE)
     {
-        buf[len - 1] = '\0';
+        std::cerr << "Got unknown return message type!" << std::endl;
+        return;
     }
 
-    std::string valueStr;
+    auto rd_res = seanerbus::msg::MessageReader<HelloWorldResV1>::from_msg(msg);
 
-    if (!conf->filter)
+    if (!rd_res.ok())
     {
-        valueStr = buf;
-    }
-    else
-    {
-        std::cmatch match; // note: cmatch, not smatch, since buf is a char*
-        std::regex re(conf->filter);
-        if (!std::regex_search(buf, match, re) || match.size() < 2)
-        {
-            std::cout << "No match for pattern '" << conf->filter << "' in line: " << buf << std::endl;
-        }
-        valueStr = match[1].str();
+        std::cerr << "Failed to decode message as HelloWorldReqV1: "
+                  << rd_res.unwrap_error().what();
+        conn.shutdown();
+        return;
     }
 
-    std::cout << "sensor path" << conf->path << " value " << std::stod(valueStr) << " factor" << conf->factor << " offset" << conf->offset << std::endl;
+    auto rd = std::move(rd_res.unwrap_ok());
 
-    tv->time = getTimestamp();
-    tv->value = _applyFactorOffset(std::stod(valueStr), conf->factor, conf->offset);
+    std::cout << "Got answer to request: " << rd.reader().getMsg().cStr() << std::endl;
+
+    //out_str_msg = rd.reader().getMsg().cStr();
+
+    conn.shutdown();
+}
+
+
+void getPayload(sensor_attribute_t *conf, SensorReading *tv)
+{
+    // todo: replace
+    
+    auto addr = seanerbus::msg::Address{seanerbus::msg::Uuid{conf->connection_uuid}};
+    // Connect to the server.
+    seanerbus::client::Connection conn("demobus://localhost:5398", "demobus://localhost:5398");
+
+    seanerbus::msg::MessageBuilder<HelloWorldReqV1> bd;
+
+    bd.builder().setMsg("Hello World");
+
+    conn.request(bd.to_message(addr), req_handler);
+
+    seanerbus::client::SimpleEventLoop sel(conn);
+
+    sel.run();
+
+    if (!conn.result().ok())
+    {
+        std::cerr << "./request failed: " << conn.result().get_error().what() << std::endl;
+    }
 }
 
 // Sense function with correct signature
@@ -239,9 +262,6 @@ void *sensor_sense(void *sensor)
     SensorReading *tv = sensor_values[conf->uuid];
 
     getPayload(conf, tv);
-
-    // Print the sensor data
-    std::cout << "[" << conf->uuid << "] value=" << tv->value << ", timestamp=" << tv->time << std::endl;
     return tv;
 }
 
@@ -274,6 +294,7 @@ void on_publish(seanerbus::client::Connection &conn,
     }
     read_publish_schedule_next(conn, queue);
 }
+
 void read_publish_schedule_next(seanerbus::client::Connection &conn,
                                 std::priority_queue<ScheduledSensor, std::vector<ScheduledSensor>, CompareNextRun> &queue)
 {
@@ -305,7 +326,9 @@ void read_publish_schedule_next(seanerbus::client::Connection &conn,
                      on_publish(c, queue, e);
                  });
 }
-void *sysfs_run(void *runtime)
+
+
+void *ad_run(void *runtime)
 {
 
     std::priority_queue<
@@ -319,6 +342,7 @@ void *sysfs_run(void *runtime)
         queue.push({std::chrono::steady_clock::now(),
                     s.second});
     }
+
     seanerbus::client::Connection conn("demobus://localhost:5398", "demobus://localhost:5398");
     read_publish_schedule_next(conn, queue);
 
@@ -330,9 +354,11 @@ void *sysfs_run(void *runtime)
         std::cerr << "publish_test failed: " << conn.result().get_error().what();
         // return -1;
     }
+
+    return nullptr;
 }
 
-void *sysfs_configurator(void *configPtr)
+void *ad_configurator(void *configPtr)
 {
     // This function receives the YAML object from the plugin manager
     // and returns a plugin-specific config object
@@ -360,19 +386,72 @@ void *sysfs_configurator(void *configPtr)
         std::string groupName = groupEntry.first.as<std::string>();
         const YAML::Node &group = groupEntry.second;
 
+	// this is not needed, since we get the list through interaction with the naming service
         // sensor list check
+	/*
         if (!group["sensors"])
         {
             std::cout << "Group '" << groupName << "' missing sensors list" << std::endl;
             continue;
         }
+	*/ 
 
-        for (const auto &item : group["sensors"])
+	if (!group["names"])
         {
+            std::cout << "Group '" << groupName << "' missing name key value list" << std::endl;
+            continue;
+        }
+
+
+	std::map<std::string, std::string> name;
+        for (const auto &item : group["names"])
+        {
+	   // todo: parse the name from group["names"]
+	   name[item.first.as<std::string>()] = item.second.as<std::string>();
+	}
+
+	for (const auto &item : name){
+
+		std::cout << item.first << ", " << item.second << std::endl;
+	}
+        seanerbus::client::Connection conn("demobus://localhost:5398", "demobus://localhost:5398");
+
+	std::vector<seanerbus::msg::Address> addrs;
+	seanerbus::resolve::resolve(
+	    conn,
+    	    name,
+    	    [&addrs](auto& conn, auto res)
+    	    {
+                if (!res.ok())
+                {
+		    std::cout << "res not ok";
+		    std::cout << res.unwrap_error().what();
+                    conn.shutdown();
+            	    return;
+        	}
+		auto addrs_received = res.unwrap_ok();
+
+		for (const auto &item : addrs_received){
+			addrs.push_back(item);
+			std::cout << item.as_string();
+		}
+		conn.shutdown();
+    	    }
+	);
+	seanerbus::client::SimpleEventLoop sel(conn); 
+	sel.run();
+	
+        for (const auto &item : addrs){
+
+	    // todo create a sensor object
+	    // todo maybe reverse query the naming service to look up the fields and possibly set them if needed
 
             // Create a sensor_attribute_t for this sensor
             sensor_attribute_t *conf = new sensor_attribute_t();
 
+	    conf->uuid = strdup(item.as_string().c_str());
+
+	    std::cout << conf->uuid;
             // apply group-level template attr
             if (templates)
             {
@@ -383,17 +462,21 @@ void *sysfs_configurator(void *configPtr)
             applyFields(group, conf);
 
             // apply sensor-level config attr
-            applyFields(item, conf);
+	    // todo: maybe? we may be able to get reverse resolve the names and set the fields?
+            //applyFields(item, conf);
 
             // Add to the global sensors map using UUID as key
             ::configs[conf->uuid] = conf;
         }
     }
+    std::cout << "No sensor_templates" << std::endl;
+
+    assert (::configs.size()!=0);
 
     return yaml;
 }
 
-bool sysfs_free_config(void *config)
+bool ad_free_config(void *config)
 {
     if (!config)
     {

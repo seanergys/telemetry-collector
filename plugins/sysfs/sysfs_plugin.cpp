@@ -8,17 +8,18 @@
 #include <queue>
 #include <algorithm>
 #include <map>
+#include <unistd.h>
+#include <limits.h>
+#include <bits/local_lim.h>
 
 #include <string>
 #include <fstream>
 #include <regex>
 
-#include "tester_plugin.hpp"
+#include "sysfs_plugin.hpp"
 
-#include <seanerbus/client/connection.hpp>
-
+#include "seanerbus/client/connection.hpp"
 #include "seanerbus/client/simple_event_loop.hpp"
-//#include "seanerbus/internal/message.hpp"
 
 #include <seanerbus/helpers/resolve.hpp>
 
@@ -28,29 +29,31 @@ static std::map<std::string, SensorReading *> sensor_values;
 plugin_interface_t plugin =
     {
         1, // version
-        tester_create,
-        tester_destroy,
-        tester_init_sensors,
+        sysfs_create,
+        sysfs_destroy,
+        sysfs_init_sensors,
         nullptr, // init_actors
-        tester_finit,
+        sysfs_finit,
         nullptr,
         nullptr,
-        tester_run,          // run function
-        nullptr,             // req
-        nullptr,             // res
-        tester_configurator, // configurator function
-        tester_free_config,  // free_config function
+        sysfs_run,          // run function
+        nullptr,            // req
+        nullptr,            // res
+        sysfs_configurator, // configurator function
+        sysfs_free_config,  // free_config function
 };
 
 void *sensor_sense(void *sensor);
 
-void *tester_create(void)
+// Global sensor values map for the sense function
+
+void *sysfs_create(void)
 {
     // Return a pointer to the plugin_interface_t object as the instance
     return &plugin;
 }
 
-bool tester_destroy(void *runtime)
+bool sysfs_destroy(void *runtime)
 {
     // The plugin_interface_t object is statically allocated, so we don't free it
     // Just clean up any resources if needed
@@ -71,12 +74,22 @@ void applyFields(const YAML::Node &node, sensor_attribute_t *conf)
 
     if (node["uuid"])
         setCharField(conf->uuid, node["uuid"].as<std::string>());
+    if (node["topic"])
+        setCharField(conf->topic, node["topic"].as<std::string>());
     if (node["interval_ms"])
         conf->interval_ms = std::chrono::milliseconds(node["interval_ms"].as<uint64_t>());
     if (node["description"])
         setCharField(conf->description, node["description"].as<std::string>());
     if (node["unit"])
         setCharField(conf->unit, node["unit"].as<std::string>());
+    if (node["path"])
+        setCharField(conf->path, node["path"].as<std::string>());
+    if (node["filter"])
+        setCharField(conf->filter, node["filter"].as<std::string>());
+    if (node["factor"])
+        conf->factor = node["factor"].as<double>();
+    if (node["offset"])
+        conf->offset = node["offset"].as<double>();
 
     if (node["name_part"])
     {
@@ -86,7 +99,9 @@ void applyFields(const YAML::Node &node, sensor_attribute_t *conf)
             conf->name[k] = v;
 	}
     }
+
 }
+
 bool applyTemplateConfigs(const YAML::Node &node, const YAML::Node &templates, sensor_attribute_t *conf)
 {
     if (!node["template"] || !templates)
@@ -107,7 +122,7 @@ bool applyTemplateConfigs(const YAML::Node &node, const YAML::Node &templates, s
     return true;
 }
 
-bool tester_init_sensors(void *runtime)
+bool sysfs_init_sensors(void *runtime)
 {
     // Get the plugin config from runtime
 
@@ -131,7 +146,15 @@ bool tester_init_sensors(void *runtime)
 
         auto addr = seanerbus::msg::Address{seanerbus::msg::Uuid{conf->uuid}};
 
-        conf->name["hostname"] = std::string(hostname);
+        conf->name["node"] = std::string(hostname);
+
+        std::string name_str;
+        for (const auto &[k, v] : conf->name)
+        {
+            name_str += k + "=" + v + ",";
+        }
+        name_str.pop_back();
+        std::cout << "Registering sensor {" << name_str << "}: " << conf->uuid << std::endl;
 
         seanerbus::resolve::register_resolve(conn, conf->name, addr,
                                              [](seanerbus::client::Connection &conn,
@@ -152,16 +175,16 @@ bool tester_init_sensors(void *runtime)
     return true; // We're using the global map, not returning a pointer to sensors
 }
 
-bool tester_finit(void *runtime)
-{
 
-    // Clear the map
+bool sysfs_finit(void *runtime)
+{
     for (auto &pair : ::configs)
     {
         sensor_attribute_t *conf = pair.second;
         if (conf)
         {
             delete conf->uuid;
+            delete conf->topic;
             delete conf->unit;
             delete conf;
         }
@@ -174,6 +197,7 @@ bool tester_finit(void *runtime)
         if (conf)
         {
             delete conf->uuid;
+            delete conf->topic;
             delete conf->unit;
             delete conf;
         }
@@ -193,11 +217,6 @@ bool tester_finit(void *runtime)
     // Clear the sensor_values map as well
     sensor_values.clear();
 
-    // Reset num_sensors in runtime
-    // if (runtime) {
-    //    ((runtime_t*)runtime)->num_sensors = 0;
-    //}
-
     return true;
 }
 
@@ -209,6 +228,59 @@ uint64_t getTimestamp()
             .count());
 }
 
+double _applyFactorOffset(double value, double factor, double offset)
+{
+    return (value * factor) + offset;
+}
+
+void getPayload(sensor_attribute_t *conf, SensorReading *tv)
+{
+
+    FILE *fp = fopen(conf->path, "r");
+    if (fp == nullptr)
+    {
+        std::cout << "Error opening file: " << conf->path
+                  << " error: " << strerror(errno) << std::endl;
+    }
+
+    char buf[1024];
+    if (fgets(buf, sizeof(buf), fp) == nullptr)
+    {
+        std::cout << "Error reading line from: " << conf->path << std::endl;
+        fclose(fp);
+    }
+    fclose(fp);
+
+    // strip trailing newline, if present
+    size_t len = strlen(buf);
+    if (len > 0 && buf[len - 1] == '\n')
+    {
+        buf[len - 1] = '\0';
+    }
+
+    std::string valueStr;
+
+    if (!conf->filter)
+    {
+        valueStr = buf;
+    }
+    else
+    {
+        std::cmatch match; // note: cmatch, not smatch, since buf is a char*
+        std::regex re(conf->filter);
+        if (!std::regex_search(buf, match, re) || match.size() < 2)
+        {
+            std::cout << "No match for pattern '" << conf->filter << "' in line: " << buf << std::endl;
+        }
+        valueStr = match[1].str();
+    }
+
+    std::cout << "sensor path" << conf->path << " value " << std::stod(valueStr) << " factor" << conf->factor << " offset" << conf->offset << std::endl;
+
+    tv->time = getTimestamp();
+    tv->value = _applyFactorOffset(std::stod(valueStr), conf->factor, conf->offset);
+}
+
 // Sense function with correct signature
 void *sensor_sense(void *sensor)
 {
@@ -216,8 +288,8 @@ void *sensor_sense(void *sensor)
     sensor_attribute_t *conf = s->conf;
 
     SensorReading *tv = sensor_values[conf->uuid];
-    tv->time = getTimestamp();
-    tv->value++;
+
+    getPayload(conf, tv);
 
     // Print the sensor data
     std::cout << "[" << conf->uuid << "] value=" << tv->value << ", timestamp=" << tv->time << std::endl;
@@ -253,7 +325,6 @@ void on_publish(seanerbus::client::Connection &conn,
     }
     read_publish_schedule_next(conn, queue);
 }
-
 void read_publish_schedule_next(seanerbus::client::Connection &conn,
                                 std::priority_queue<ScheduledSensor, std::vector<ScheduledSensor>, CompareNextRun> &queue)
 {
@@ -285,8 +356,7 @@ void read_publish_schedule_next(seanerbus::client::Connection &conn,
                      on_publish(c, queue, e);
                  });
 }
-
-void *tester_run(void *runtime)
+void *sysfs_run(void *runtime)
 {
 
     std::priority_queue<
@@ -300,7 +370,6 @@ void *tester_run(void *runtime)
         queue.push({std::chrono::steady_clock::now(),
                     s.second});
     }
-
     seanerbus::client::Connection conn("demobus://localhost:5398", "demobus://localhost:5398");
     read_publish_schedule_next(conn, queue);
 
@@ -314,7 +383,7 @@ void *tester_run(void *runtime)
     }
 }
 
-void *tester_configurator(void *configPtr)
+void *sysfs_configurator(void *configPtr)
 {
     // This function receives the YAML object from the plugin manager
     // and returns a plugin-specific config object
@@ -371,10 +440,11 @@ void *tester_configurator(void *configPtr)
             ::configs[conf->uuid] = conf;
         }
     }
+
     return yaml;
 }
 
-bool tester_free_config(void *config)
+bool sysfs_free_config(void *config)
 {
     if (!config)
     {

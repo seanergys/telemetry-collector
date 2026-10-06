@@ -6,8 +6,8 @@
 #include <unordered_map>
 #include <vector>
 
-#include "../plugin.hpp"
-#include "../types.hpp"
+#include "plugin.hpp"
+#include "types.hpp"
 
 /* lifecycle */
 void *sysfs_create(void);
@@ -32,6 +32,7 @@ typedef struct sensor_attribute
     char *filter;
     double factor = 1;
     double offset = 0;
+    std::map<std::string, std::string> name;
 } sensor_attribute_t;
 
 struct SensorReading

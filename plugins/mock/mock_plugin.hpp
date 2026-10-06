@@ -1,6 +1,6 @@
 #pragma once
 
-#include "../plugin.hpp"
+#include "plugin.hpp"
 
 void* mock_create(void);
 bool  mock_destroy(void* runtime);

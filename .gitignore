@@ -9,4 +9,4 @@ install
 telemetry-collector
 !sysfs.yaml
 net-snmp*
-yaml-cpp
+build
