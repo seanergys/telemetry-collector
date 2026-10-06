@@ -16,5 +16,3 @@ set(
 set(
     PLUGIN_ad_DEPENDENCIES
 )
-
-

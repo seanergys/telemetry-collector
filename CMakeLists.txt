@@ -7,11 +7,7 @@ project(
     LANGUAGES CXX
 )
 
-list(
-    PREPEND
-    CMAKE_MODULE_PATH
-    "${PROJECT_SOURCE_DIR}/cmake"
-)
+list(PREPEND CMAKE_MODULE_PATH "${PROJECT_SOURCE_DIR}/cmake")
 
 # ============================================================================
 # seanerbus / capnp
@@ -31,19 +27,12 @@ set(
     "Root installation path of capnp"
 )
 
-set(
-    UUID_ROOT
-    ""
-    CACHE PATH
-    "Root installation path of uuid"
-)
-
 find_package(
     PkgConfig
     REQUIRED
 )
 
-list(APPEND CMAKE_PREFIX_PATH "${SEANERBUS_ROOT}" "${CAPNP_ROOT}" "${UUID_ROOT}")
+list(APPEND CMAKE_PREFIX_PATH "${SEANERBUS_ROOT}" "${CAPNP_ROOT}")
 
 message(
     STATUS
@@ -81,8 +70,7 @@ include(Plugins)
 # Main dependency selection
 # ============================================================================
 
-set(
-    MAIN_DEPENDENCIES
+set(MAIN_DEPENDENCIES
     yaml-cpp
     spdlog
 )
@@ -105,25 +93,18 @@ add_executable(
 
 target_compile_features(
     telemetry_collector
-    PRIVATE
-        cxx_std_20
+    PRIVATE cxx_std_20
 )
 
 target_compile_options(
     telemetry_collector
-    PRIVATE
-        -Wall
-        -Wextra
-        -Wpedantic
-        $<$<CONFIG:Debug>:-O0;-g>
-        $<$<CONFIG:Release>:-O3>
-        $<$<CONFIG:RelWithDebInfo>:-O2;-g>
+    PRIVATE -Wall -Wextra -Wpedantic $<$<CONFIG:Debug>:-O0;-g> $<$<CONFIG:Release>:-O3>
+            $<$<CONFIG:RelWithDebInfo>:-O2;-g>
 )
 
 target_include_directories(
     telemetry_collector
-    PRIVATE
-        "${CMAKE_CURRENT_SOURCE_DIR}/include"
+    PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/include"
 )
 
 
@@ -139,16 +120,13 @@ select_plugins()
 #
 # This resolves dependencies required by BOTH:
 #
-#   - telemetry_collector
-#   - selected plugins
+# * telemetry_collector
+# * selected plugins
 #
 # Duplicate dependencies are built only once.
 # ============================================================================
 
-resolve_dependencies(
-    "${MAIN_DEPENDENCIES}"
-    "${SELECTED_PLUGINS}"
-)
+resolve_dependencies("${MAIN_DEPENDENCIES}" "${SELECTED_PLUGINS}")
 
 # ============================================================================
 # Main target dependencies
@@ -172,8 +150,7 @@ target_link_libraries(
 
 set_target_properties(
     telemetry_collector
-    PROPERTIES
-        BUILD_RPATH "${SEANERBUS_LIBRARY_DIRS}"
+    PROPERTIES BUILD_RPATH "${SEANERBUS_LIBRARY_DIRS}"
 )
 
 target_compile_definitions(telemetry_collector PUBLIC SPDLOG_FMT_EXTERNAL)
@@ -184,7 +161,10 @@ target_link_libraries(telemetry_collector PRIVATE PkgConfig::UUID)
 # Plugins
 # ============================================================================
 
-foreach(plugin IN LISTS SELECTED_PLUGINS)
+foreach(
+    plugin IN
+    LISTS SELECTED_PLUGINS
+)
 
     add_library(
         "${plugin}"
@@ -196,8 +176,7 @@ foreach(plugin IN LISTS SELECTED_PLUGINS)
 
     set_target_properties(
         "${plugin}"
-        PROPERTIES
-            PREFIX ""
+        PROPERTIES PREFIX ""
     )
 
     target_compile_definitions("${plugin}" PUBLIC SPDLOG_FMT_EXTERNAL)
@@ -210,10 +189,7 @@ foreach(plugin IN LISTS SELECTED_PLUGINS)
             "${UUID_INCLUDEDIR}"
     )
 
-    plugin_get_dependencies(
-        "${plugin}"
-        plugin_dependencies
-    )
+    plugin_get_dependencies("${plugin}" plugin_dependencies)
 
     target_link_libraries(
         "${plugin}"
@@ -226,8 +202,7 @@ foreach(plugin IN LISTS SELECTED_PLUGINS)
     foreach(dep IN LISTS plugin_dependencies)
         target_link_libraries(
             "${plugin}"
-            PRIVATE
-                "${dep}::${dep}"
+            PRIVATE "${dep}::${dep}"
         )
     endforeach()
 
@@ -248,17 +223,13 @@ configure_file(${CMAKE_CURRENT_SOURCE_DIR}/config/config.yaml.in
 
 
 install(
-    TARGETS
-        telemetry_collector
-    RUNTIME DESTINATION
-        ${CMAKE_INSTALL_BINDIR}
+    TARGETS telemetry_collector
+    RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
 )
 
 install(
-    TARGETS
-        ${SELECTED_PLUGINS}
-    LIBRARY DESTINATION
-        ${CMAKE_INSTALL_LIBDIR}/telemetry_collector/plugins
+    TARGETS ${SELECTED_PLUGINS}
+    LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}/telemetry_collector/plugins
 )
 
 install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/config/
