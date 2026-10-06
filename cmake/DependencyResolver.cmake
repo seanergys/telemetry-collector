@@ -27,6 +27,10 @@ set(DEPS_INSTALL_DIR
     "${DEPS_ROOT}/install"
 )
 
+option(USE_SYSTEM_DEPENDENCIES "Never build dependencies from source; fail if one is not installed"
+       OFF
+)
+
 file(MAKE_DIRECTORY "${DEPS_SOURCE_DIR}" "${DEPS_BUILD_DIR}" "${DEPS_INSTALL_DIR}")
 
 # ============================================================================
@@ -109,35 +113,57 @@ function(find_existing_dependency dep output_variable)
     set(package_name
         "${DEPENDENCY_PROVIDER_${dep}}"
     )
+    set(${output_variable}
+        FALSE
+        PARENT_SCOPE
+    )
 
     if(NOT package_name)
-
-        set(${output_variable}
-            FALSE
-            PARENT_SCOPE
-        )
-
         return()
-
     endif()
 
+    # 1. CMake package config (e.g. yaml-cpp)
     find_package("${package_name}" CONFIG QUIET)
 
     if(${package_name}_FOUND)
-
-        message(STATUS "    using existing installation " "(${package_name})")
-
+        message(STATUS "    using existing installation (${package_name})")
         set(${output_variable}
             TRUE
             PARENT_SCOPE
         )
+        return()
+    endif()
 
-    else()
+    # 1. pkg-config (e.g. net-snmp, which ships no CMake config)
+    if(PkgConfig_FOUND)
 
-        set(${output_variable}
-            FALSE
-            PARENT_SCOPE
+        string(MAKE_C_IDENTIFIER "${dep}" dep_id)
+
+        pkg_check_modules(
+            PC_${dep_id} QUIET IMPORTED_TARGET GLOBAL # needs cmake 3.13
+            "${package_name}"
         )
+
+        if(PC_${dep_id}_FOUND)
+
+            # same public name that create_dependency_target() provides
+            if(NOT TARGET "${dep}::${dep}")
+                add_library("${dep}::${dep}" INTERFACE IMPORTED GLOBAL)
+                target_link_libraries(
+                    "${dep}::${dep}"
+                    INTERFACE PkgConfig::PC_${dep_id}
+                )
+            endif()
+
+            message(STATUS "    using existing installation "
+                           "(pkg-config ${package_name} ${PC_${dep_id}_VERSION})"
+            )
+            set(${output_variable}
+                TRUE
+                PARENT_SCOPE
+            )
+
+        endif()
 
     endif()
 
@@ -364,6 +390,12 @@ function(resolve_dependencies main_dependencies plugins)
             find_existing_dependency("${dep}" dependency_found)
 
             if(NOT dependency_found)
+
+                if(USE_SYSTEM_DEPENDENCIES)
+                    message(FATAL_ERROR "Dependency '${dep}' not found on the system and "
+                                        "USE_SYSTEM_DEPENDENCIES is ON."
+                    )
+                endif()
 
                 build_dependency("${dep}")
 
