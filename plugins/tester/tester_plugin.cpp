@@ -51,6 +51,7 @@ void *sensor_sense(void *sensor);
 
 void *tester_create(void)
 {
+    logger = logging.create("telemetry-collector::tester");
     // Return a pointer to the plugin_interface_t object as the instance
     return &plugin;
 }
@@ -145,6 +146,7 @@ bool tester_init_sensors(void *runtime)
         {
             name_str += k + "=" + v + ",";
         }
+        std::cout << "test" << std::endl;
         name_str.pop_back();
         logger->info("Registering sensor {{}}: {}", name_str, conf->uuid);
         seanerbus::resolve::register_resolve(conn, conf->name, addr,
