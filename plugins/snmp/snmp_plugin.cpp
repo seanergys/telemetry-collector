@@ -19,6 +19,8 @@
 //#include "seanerbus/helpers/noexcept.hpp"
 
 static std::map<std::string, SensorReading *> sensor_values;
+static Logger logging;
+static std::shared_ptr<spdlog::logger> logger;
 
 // Global plugin instance
 plugin_interface_t plugin =
@@ -42,6 +44,7 @@ void *sensor_sense(void *sensor);
 
 void *snmp_create(void)
 {
+    logger = logging.create("telemetry-collector::snmp");
     // Return a pointer to the plugin_interface_t object as the instance
     return &plugin;
 }
@@ -144,7 +147,7 @@ bool applyTemplateConfigs(const YAML::Node &node, const YAML::Node &templates, s
 
     if (!tmpl)
     {
-        std::cout << "Unknown template referenced: '" << tmplName << "'" << std::endl;
+        logger->warn("Unknown template referenced: '{}'", tmplName);
         return false;
     }
 
@@ -166,7 +169,7 @@ void setOID(sensor_attribute_t *conf)
     else
     {
         conf->_oidLen = 0;
-        std::cerr << tmp_oid << " " << conf->_oid << ": Cannot convert OID string: " << tmp_oid << std::endl;
+        logger->error("Cannot convert OID string: {}", tmp_oid);
     }
 }
 
@@ -179,7 +182,7 @@ void setup_snmp_session(sensor_attribute_t *conf)
     snmp_error(&conf->snmpSession, &liberr, &syserr, &errstr);
     if (liberr || syserr)
     {
-        std::cerr << "SNMP: Error initializing session: " + std::string(errstr);
+        logger->error("SNMP: Error initializing session: {}", std::string(errstr));
     }
     free(errstr);
     conf->snmpSession.version = conf->version;
@@ -221,7 +224,7 @@ void setup_snmp_session(sensor_attribute_t *conf)
             if (generate_Ku(conf->snmpSession.securityAuthProto, conf->snmpSession.securityAuthProtoLen, (u_char *)conf->authKey.c_str(), conf->authKey.length(),
                             conf->snmpSession.securityAuthKey, &conf->snmpSession.securityAuthKeyLen) != SNMPERR_SUCCESS)
             {
-                std::cerr << "SNMP: Error generating Ku from authentication key";
+                logger->error("SNMP: Error generating Ku from authentication key");
             }
 
             if (conf->snmpSession.securityLevel == SNMP_SEC_LEVEL_AUTHPRIV)
@@ -236,20 +239,20 @@ void setup_snmp_session(sensor_attribute_t *conf)
                 /* set the privacy key to a hashed version of our
                 _privKey (which must be at least 8 characters long) */
                 if (generate_Ku(conf->snmpSession.securityAuthProto, conf->snmpSession.securityAuthProtoLen, (u_char *)conf->privKey.c_str(),
-                                conf->privKey.length(), conf->snmpSession.securityPrivKey, &conf->snmpSession.securityPrivKeyLen) != SNMPERR_SUCCESS)
-                {
-                    std::cerr << "SNMP: Error generating Ku from privacy key";
-                }
+                                                conf->privKey.length(), conf->snmpSession.securityPrivKey, &conf->snmpSession.securityPrivKeyLen) != SNMPERR_SUCCESS)
+                            {
+                                logger->error("SNMP: Error generating Ku from privacy key");
+                            }
             }
         }
         else
         {
-            std::cerr << "SNMP security level unknown!";
+            logger->error("SNMP security level unknown!");
         }
     }
     else
     {
-        std::cerr << "SNMP Version " << conf->version << " not supported!";
+        logger->error("SNMP Version {} not supported!", conf->version);
     }
 }
 
@@ -343,7 +346,7 @@ bool open(sensor_attribute_t *conf)
     snmp_error(&conf->snmpSession, &liberr, &syserr, &errstr);
     if (liberr || syserr)
     {
-        std::cerr << "SNMP-open: " << errstr;
+        logger->error("SNMP-open: {}", errstr);
         free(errstr);
         return false;
     }
@@ -398,12 +401,12 @@ int64_t get(sensor_attribute_t *conf)
                 ret = *vp->val.integer;
                 break;
             default:
-                std::cerr << "Non-Integer SNMP data received (type=" << std::to_string((int)vp->type) << "):";
+                logger->error("Non-Integer SNMP data received (type={}):", static_cast<int>(vp->type));
                 char buf[1024];
                 while (vp)
                 {
                     snprint_variable(buf, sizeof(buf), vp->name, vp->name_length, vp);
-                    std::cerr << (&conf->snmpSession)->peername << ": " << buf;
+                    logger->error("{}: {}", (&conf->snmpSession)->peername, buf);
                     vp = vp->next_variable;
                 }
             }
@@ -424,6 +427,7 @@ int64_t get(sensor_attribute_t *conf)
             free(err);
         }
 
+        logger->error("SNMP error: {}", errorStr);
         throw std::runtime_error(errorStr);
     }
 
@@ -453,7 +457,7 @@ void *sensor_sense(void *sensor)
     tv->time = getTimestamp();
 
     // Print the sensor data
-    std::cout << "[" << conf->uuid << "] value=" << tv->value << ", timestamp=" << tv->time << std::endl;
+    logger->debug("[{}] value={}, timestamp={}", conf->uuid, tv->value, tv->time);
     return tv;
 }
 
@@ -480,7 +484,7 @@ void on_publish(seanerbus::client::Connection &conn,
 {
     if (!err.ok())
     {
-        std::cerr << "Publishing failed: " << err.unwrap_error().what() << "\n";
+        logger->error("Publishing failed: {}", err.unwrap_error().what());
         conn.shutdown(); // error path only — matches the base example
         return;
     }
@@ -541,7 +545,7 @@ void *snmp_run(void *runtime)
 
     if (!conn.result().ok())
     {
-        std::cerr << "publish_test failed: " << conn.result().get_error().what();
+        logger->error("publish_test failed: {}", conn.result().get_error().what());
         // return -1;
     }
 }
@@ -558,12 +562,12 @@ void *snmp_configurator(void *configPtr)
     const YAML::Node &templates = config["sensor_templates"];
     if (!templates)
     {
-        std::cout << "No sensor_templates" << std::endl;
+        logger->info("No sensor_templates");
     }
 
     if (!config["sensor_groups"])
     {
-        std::cout << "Missing sensor_groups" << std::endl;
+        logger->error("Missing sensor_groups");
         return yaml;
     }
 
@@ -577,7 +581,7 @@ void *snmp_configurator(void *configPtr)
         // sensor list check
         if (!group["sensors"])
         {
-            std::cout << "Group '" << groupName << "' missing sensors list" << std::endl;
+            logger->error("Group '{}' missing sensors list", groupName);
             continue;
         }
 

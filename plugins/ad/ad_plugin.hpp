@@ -20,7 +20,6 @@ void* ad_run(void* runtime);
 /* config loading */
 void* ad_configurator(void* config);
 bool  ad_free_config(void* config);
-
 typedef struct sensor_attribute
 {
     char* uuid;
@@ -42,7 +41,8 @@ struct SensorReading
 
 std::map<std::string, sensor_attribute_t*> configs; // uuid -> configs
 std::map<std::string, sensor_t*> sensors; // uuid -> sensors
-
+std::shared_ptr<spdlog::logger> logger; /* logger */
 
 /* exported plugin descriptor */
 extern "C" plugin_interface_t plugin;
+
