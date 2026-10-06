@@ -3,24 +3,20 @@
 # ----------------------------------------------------------------
 
 # Commands may need to know the format version.
-set(CMAKE_IMPORT_FILE_VERSION
-    1
-)
+set(CMAKE_IMPORT_FILE_VERSION 1)
 
 # Import target "Seanerbus::seanerbus" for configuration ""
-set_property(
-    TARGET Seanerbus::seanerbus
-    APPEND
-    PROPERTY IMPORTED_CONFIGURATIONS NOCONFIG
-)
+set_property(TARGET Seanerbus::seanerbus APPEND PROPERTY IMPORTED_CONFIGURATIONS
+                                                         NOCONFIG)
 set_target_properties(
-    Seanerbus::seanerbus
-    PROPERTIES IMPORTED_LINK_INTERFACE_LANGUAGES_NOCONFIG "CXX"
-               IMPORTED_LOCATION_NOCONFIG "${_IMPORT_PREFIX}/lib64/libseanerbus.a"
-)
+  Seanerbus::seanerbus
+  PROPERTIES IMPORTED_LINK_INTERFACE_LANGUAGES_NOCONFIG "CXX"
+             IMPORTED_LOCATION_NOCONFIG
+             "${_IMPORT_PREFIX}/lib64/libseanerbus.a")
 
 list(APPEND _IMPORT_CHECK_TARGETS Seanerbus::seanerbus)
-list(APPEND _IMPORT_CHECK_FILES_FOR_Seanerbus::seanerbus "${_IMPORT_PREFIX}/lib64/libseanerbus.a")
+list(APPEND _IMPORT_CHECK_FILES_FOR_Seanerbus::seanerbus
+     "${_IMPORT_PREFIX}/lib64/libseanerbus.a")
 
 # Commands beyond this point should not need to know the version.
 set(CMAKE_IMPORT_FILE_VERSION)

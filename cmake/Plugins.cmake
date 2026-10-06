@@ -6,39 +6,28 @@ include_guard(GLOBAL)
 
 function(discover_plugins)
 
-    file(
-        GLOB plugin_dirs CONFIGURE_DEPENDS
-        LIST_DIRECTORIES true
-        "${CMAKE_CURRENT_SOURCE_DIR}/plugins/*"
-    )
+  file(GLOB plugin_dirs CONFIGURE_DEPENDS LIST_DIRECTORIES true
+       "${CMAKE_CURRENT_SOURCE_DIR}/plugins/*")
 
-    set(plugins
-        ""
-    )
+  set(plugins "")
 
-    foreach(
-        dir IN
-        LISTS plugin_dirs
-    )
+  foreach(dir IN LISTS plugin_dirs)
 
-        if(IS_DIRECTORY "${dir}")
+    if(IS_DIRECTORY "${dir}")
 
-            get_filename_component(plugin "${dir}" NAME)
+      get_filename_component(plugin "${dir}" NAME)
 
-            list(APPEND plugins "${plugin}")
+      list(APPEND plugins "${plugin}")
 
-        endif()
+    endif()
 
-    endforeach()
+  endforeach()
 
-    list(SORT plugins)
+  list(SORT plugins)
 
-    set(AVAILABLE_PLUGINS
-        "${plugins}"
-        PARENT_SCOPE
-    )
+  set(AVAILABLE_PLUGINS "${plugins}" PARENT_SCOPE)
 
-    message(STATUS "Available plugins: ${plugins}")
+  message(STATUS "Available plugins: ${plugins}")
 
 endfunction()
 
@@ -48,29 +37,24 @@ endfunction()
 
 function(select_plugins)
 
-    if(NOT DEFINED SELECTED_PLUGINS)
+  if(NOT DEFINED SELECTED_PLUGINS)
 
-        set(SELECTED_PLUGINS
-            "${AVAILABLE_PLUGINS}"
-            CACHE STRING "Plugins to build"
-        )
+    set(SELECTED_PLUGINS "${AVAILABLE_PLUGINS}" CACHE STRING "Plugins to build")
+
+  endif()
+
+  foreach(plugin IN LISTS SELECTED_PLUGINS)
+
+    if(NOT plugin IN_LIST AVAILABLE_PLUGINS)
+
+      message(FATAL_ERROR "Unknown plugin '${plugin}'. "
+                          "Available: ${AVAILABLE_PLUGINS}")
 
     endif()
 
-    foreach(
-        plugin IN
-        LISTS SELECTED_PLUGINS
-    )
+  endforeach()
 
-        if(NOT plugin IN_LIST AVAILABLE_PLUGINS)
-
-            message(FATAL_ERROR "Unknown plugin '${plugin}'. " "Available: ${AVAILABLE_PLUGINS}")
-
-        endif()
-
-    endforeach()
-
-    message(STATUS "Selected plugins: ${SELECTED_PLUGINS}")
+  message(STATUS "Selected plugins: ${SELECTED_PLUGINS}")
 
 endfunction()
 
@@ -80,27 +64,18 @@ endfunction()
 
 function(plugin_get_dependencies plugin output_variable)
 
-    set(variable
-        "PLUGIN_${plugin}_DEPENDENCIES"
-    )
+  set(variable "PLUGIN_${plugin}_DEPENDENCIES")
 
-    if(DEFINED ${variable})
+  if(DEFINED ${variable})
 
-        set(dependencies
-            "${${variable}}"
-        )
+    set(dependencies "${${variable}}")
 
-    else()
+  else()
 
-        set(dependencies
-            ""
-        )
+    set(dependencies "")
 
-    endif()
+  endif()
 
-    set(${output_variable}
-        "${dependencies}"
-        PARENT_SCOPE
-    )
+  set(${output_variable} "${dependencies}" PARENT_SCOPE)
 
 endfunction()
