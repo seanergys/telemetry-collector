@@ -59,9 +59,12 @@ test:
   stage: test
   script:
     - cd install
-    - test -f bin/telemetry-collector
+    - test -f bin/telemetry-collector || (echo "missing bin/telemetry-collector"; exit 1)
+    
     - plugin_install_dir="lib/telemetry_collector/plugins" 
-    - test -f "$plugin_install_dir/tester.so" || -f "$plugin_install_dir/sysfs.so" || -f "$plugin_install_dir/snmp.so"  || exit 1
+    - test -f "$plugin_install_dir/tester.so" || (echo "missing $plugin_install_dir/tester.so"; exit 1)
+    - test -f "$plugin_install_dir/sysfs.so" || (echo "missing $plugin_install_dir/sysfs.so"; exit 1)
+    - test -f "$plugin_install_dir/snmp.so" || (echo "missing $plugin_install_dir/snmp.so"; exit 1)
   artifacts:
     paths:
       - "**/*"
