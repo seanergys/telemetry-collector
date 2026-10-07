@@ -59,7 +59,8 @@ test:
   stage: test
   script:
     - cd install
-    - test -f bin/telemetry-collector || (echo "missing bin/telemetry-collector"; exit 1)
+    - ls
+    - test -f bin/telemetry_collector|| (echo "missing bin/telemetry_collector"; exit 1)
     
     - plugin_install_dir="lib/telemetry_collector/plugins" 
     - test -f "$plugin_install_dir/tester.so" || (echo "missing $plugin_install_dir/tester.so"; exit 1)
