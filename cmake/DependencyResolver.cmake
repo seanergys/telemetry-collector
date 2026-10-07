@@ -196,11 +196,6 @@ function(create_dependency_target dep install_dir)
         return()
     endif()
 
-    file(MAKE_DIRECTORY
-        "${install_dir}/include"
-        "${install_dir}/lib"
-    )
-
     add_library(
         "${target}"
         INTERFACE

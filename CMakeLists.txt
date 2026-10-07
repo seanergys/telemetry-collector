@@ -30,17 +30,23 @@ include(Plugins)
 set(
     MAIN_DEPENDENCIES
     yaml-cpp
+    spdlog
 )
 
 # ============================================================================
 # telemetry collector
 # ============================================================================
 
+file(
+    GLOB
+    TELEMETRY_COLLECTOR_SOURCES
+    CONFIGURE_DEPENDS
+        "${CMAKE_CURRENT_SOURCE_DIR}/src/*.cpp"
+)
+
 add_executable(
     telemetry_collector
-    src/telemetry-collector.cpp
-    src/pluginManager.cpp
-    src/config.cpp
+    ${TELEMETRY_COLLECTOR_SOURCES}
 )
 
 target_compile_features(
@@ -156,6 +162,7 @@ target_link_libraries(
     PRIVATE
         PkgConfig::SEANERBUS
         yaml-cpp::yaml-cpp
+	spdlog::spdlog
         ${CMAKE_DL_LIBS}
 )
 
@@ -176,6 +183,7 @@ foreach(plugin IN LISTS SELECTED_PLUGINS)
         SHARED
             "plugins/${plugin}/${plugin}_plugin.cpp"
             ${COMMON_SOURCES}
+	    ${CMAKE_SOURCE_DIR}/src/logger.cpp # common functionalities between the TC and the plugins -> maybe separate this into common?
     )
 
     set_target_properties(
@@ -200,6 +208,7 @@ foreach(plugin IN LISTS SELECTED_PLUGINS)
         "${plugin}"
         PRIVATE
             PkgConfig::SEANERBUS
+            spdlog::spdlog
     )
 
     foreach(dep IN LISTS plugin_dependencies)

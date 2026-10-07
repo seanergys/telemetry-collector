@@ -25,6 +25,8 @@
 #include <seanerbus/helpers/resolve.hpp>
 
 static std::map<std::string, SensorReading *> sensor_values = {};
+static Logger logging;
+static std::shared_ptr<spdlog::logger> logger;
 
 // Global plugin instance
 plugin_interface_t plugin =
@@ -44,7 +46,6 @@ plugin_interface_t plugin =
         ad_free_config,  // free_config function
 };
 
-
 void *sensor_sense(void *sensor);
 
 // Global sensor values map for the sense function
@@ -52,6 +53,7 @@ void *sensor_sense(void *sensor);
 void *ad_create(void)
 {
     // Return a pointer to the plugin_interface_t object as the instance
+    logger = logging.create("telemetry-collector::ad");
     return &plugin;
 }
 
@@ -106,7 +108,7 @@ bool applyTemplateConfigs(const YAML::Node &node, const YAML::Node &templates, s
 
     if (!tmpl)
     {
-        std::cout << "Unknown template referenced: '" << tmplName << "'" << std::endl;
+        logger->warn("Unknown template referenced: '{}'", tmplName);
         return false;
     }
 
@@ -196,7 +198,7 @@ void req_handler(seanerbus::client::Connection& conn, seanerbus::Expected<seaner
     if (!res.ok())
     {
         auto err = res.unwrap_error();
-        std::cerr << "Failed to listen for requests: " << err.what() << std::endl;
+        logger->error("Failed to listen for requests: {}", err.what());
         conn.shutdown(seanerbus::Unexpected(err));
         return;
     }
@@ -205,7 +207,7 @@ void req_handler(seanerbus::client::Connection& conn, seanerbus::Expected<seaner
 
     if (msg.payload_type() != HelloWorldResV1::TYPE)
     {
-        std::cerr << "Got unknown return message type!" << std::endl;
+        logger->error("Got unknown return message type!");
         return;
     }
 
@@ -213,17 +215,14 @@ void req_handler(seanerbus::client::Connection& conn, seanerbus::Expected<seaner
 
     if (!rd_res.ok())
     {
-        std::cerr << "Failed to decode message as HelloWorldReqV1: "
-                  << rd_res.unwrap_error().what();
+        logger->error("Failed to decode message as HelloWorldReqV1: {}", rd_res.unwrap_error().what());
         conn.shutdown();
         return;
     }
 
     auto rd = std::move(rd_res.unwrap_ok());
 
-    std::cout << "Got answer to request: " << rd.reader().getMsg().cStr() << std::endl;
-
-    //out_str_msg = rd.reader().getMsg().cStr();
+    logger->info("Got answer to request: {}", rd.reader().getMsg().cStr());
 
     conn.shutdown();
 }
@@ -232,7 +231,7 @@ void req_handler(seanerbus::client::Connection& conn, seanerbus::Expected<seaner
 void getPayload(sensor_attribute_t *conf, SensorReading *tv)
 {
     // todo: replace
-    
+
     auto addr = seanerbus::msg::Address{seanerbus::msg::Uuid{conf->connection_uuid}};
     // Connect to the server.
     seanerbus::client::Connection conn("demobus://localhost:5398", "demobus://localhost:5398");
@@ -249,7 +248,7 @@ void getPayload(sensor_attribute_t *conf, SensorReading *tv)
 
     if (!conn.result().ok())
     {
-        std::cerr << "./request failed: " << conn.result().get_error().what() << std::endl;
+        logger->error("./request failed: {}", conn.result().get_error().what());
     }
 }
 
@@ -288,7 +287,7 @@ void on_publish(seanerbus::client::Connection &conn,
 {
     if (!err.ok())
     {
-        std::cerr << "Publishing failed: " << err.unwrap_error().what() << "\n";
+        logger->error("Publishing failed: {}", err.unwrap_error().what());
         conn.shutdown(); // error path only — matches the base example
         return;
     }
@@ -351,8 +350,7 @@ void *ad_run(void *runtime)
 
     if (!conn.result().ok())
     {
-        std::cerr << "publish_test failed: " << conn.result().get_error().what();
-        // return -1;
+        logger->error("publish_test failed: {}", conn.result().get_error().what());
     }
 
     return nullptr;
@@ -370,12 +368,12 @@ void *ad_configurator(void *configPtr)
     const YAML::Node &templates = config["sensor_templates"];
     if (!templates)
     {
-        std::cout << "No sensor_templates" << std::endl;
+        logger->info("No sensor_templates");
     }
 
     if (!config["sensor_groups"])
     {
-        std::cout << "Missing sensor_groups" << std::endl;
+        logger->error("Missing sensor_groups");
         return yaml;
     }
 
@@ -391,14 +389,14 @@ void *ad_configurator(void *configPtr)
 	/*
         if (!group["sensors"])
         {
-            std::cout << "Group '" << groupName << "' missing sensors list" << std::endl;
+            logger->error("Group '{}' missing sensors list", groupName);
             continue;
         }
-	*/ 
+	*/
 
 	if (!group["names"])
         {
-            std::cout << "Group '" << groupName << "' missing name key value list" << std::endl;
+            logger->error("Group '{}' missing name key value list", groupName);
             continue;
         }
 
@@ -412,7 +410,7 @@ void *ad_configurator(void *configPtr)
 
 	for (const auto &item : name){
 
-		std::cout << item.first << ", " << item.second << std::endl;
+	    logger->debug("Name mapping: {} = {}", item.first, item.second);
 	}
         seanerbus::client::Connection conn("demobus://localhost:5398", "demobus://localhost:5398");
 
@@ -424,8 +422,7 @@ void *ad_configurator(void *configPtr)
     	    {
                 if (!res.ok())
                 {
-		    std::cout << "res not ok";
-		    std::cout << res.unwrap_error().what();
+	            logger->error("Resolve not ok: {}", res.unwrap_error().what());
                     conn.shutdown();
             	    return;
         	}
@@ -433,14 +430,14 @@ void *ad_configurator(void *configPtr)
 
 		for (const auto &item : addrs_received){
 			addrs.push_back(item);
-			std::cout << item.as_string();
+			logger->debug("Resolved address: {}", item.as_string());
 		}
 		conn.shutdown();
     	    }
 	);
-	seanerbus::client::SimpleEventLoop sel(conn); 
+	seanerbus::client::SimpleEventLoop sel(conn);
 	sel.run();
-	
+
         for (const auto &item : addrs){
 
 	    // todo create a sensor object
@@ -451,7 +448,7 @@ void *ad_configurator(void *configPtr)
 
 	    conf->uuid = strdup(item.as_string().c_str());
 
-	    std::cout << conf->uuid;
+	    logger->info("Creating sensor with UUID: {}", conf->uuid);
             // apply group-level template attr
             if (templates)
             {
@@ -469,8 +466,7 @@ void *ad_configurator(void *configPtr)
             ::configs[conf->uuid] = conf;
         }
     }
-    std::cout << "No sensor_templates" << std::endl;
-
+    logger->info("Total sensors configured: {}", ::configs.size());
     assert (::configs.size()!=0);
 
     return yaml;

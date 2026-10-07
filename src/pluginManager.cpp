@@ -3,13 +3,14 @@
 #include <algorithm>
 #include <chrono>
 #include <cstring>
-#include <iostream>
 #include <string>
 #include <thread>
-
 #include <yaml-cpp/yaml.h>
 
 #include <dlfcn.h>
+
+#include <spdlog/fmt/fmt.h>
+#include <spdlog/fmt/ranges.h>
 
 namespace
 {
@@ -36,18 +37,14 @@ bool PluginManager::finit_plugin(
     // Check if plugin is running - cannot finalize a running plugin
     if (runtime->running)
     {
-        std::cerr
-            << "Plugin \"" << uuid
-            << "\" is still running. Stop the plugin before finalizing." << std::endl;
+        logger->error("Plugin \"{}\" is still running. Stop the plugin before finalizing.", uuid);
     return false;
 }
 
     // Check if plugin is initialized before finalizing
     if (!runtime->initialized)
     {
-        std::cerr
-            << "Plugin \"" << uuid
-            << "\" is not initialized" << std::endl;
+        logger->error("Plugin \"{}\" is not initialized", uuid);
         return false;
     }
 
@@ -114,9 +111,7 @@ bool PluginManager::load_plugin(
     // Check if plugin with this UUID is already loaded
     if (is_plugin_loaded(uuid))
     {
-        std::cerr
-            << "Plugin with UUID \"" << uuid
-            << "\" is already loaded" << std::endl;
+        logger->error("Plugin with UUID \"{}\" is already loaded", uuid);
     return false;
 }
 
@@ -127,10 +122,7 @@ bool PluginManager::load_plugin(
     runtime.library = dlopen(path, RTLD_NOW);
     if (!runtime.library)
     {
-        std::cerr
-            << "dlopen failed: "
-            << dlerror()
-            << '\n';
+        logger->error("dlopen failed: {}", dlerror());
         runtimes.erase(uuid);
         return false;
     }
@@ -139,8 +131,7 @@ bool PluginManager::load_plugin(
     runtime.plugin = reinterpret_cast<plugin_interface_t*>(dlsym(runtime.library, "plugin"));
     if (!runtime.plugin)
     {
-        std::cerr
-            << "plugin descriptor not found\n";
+        logger->error("plugin descriptor not found");
         dlclose(runtime.library);
         runtimes.erase(uuid);
         return false;
@@ -149,12 +140,7 @@ bool PluginManager::load_plugin(
     // Check plugin version
     if (runtime.plugin->version != PLUGIN_VERSION)
     {
-        std::cerr
-            << "Version mismatch (plugin="
-            << runtime.plugin->version
-            << ", expected="
-            << PLUGIN_VERSION
-            << ")\n";
+        logger->error("Version mismatch (plugin={}, expected={})", runtime.plugin->version, PLUGIN_VERSION);
         dlclose(runtime.library);
         runtimes.erase(uuid);
         return false;
@@ -163,8 +149,7 @@ bool PluginManager::load_plugin(
     // Validate required plugin functions
     if (!runtime.plugin->create || !runtime.plugin->destroy)
     {
-        std::cerr
-            << "Plugin validation failed: create and/or destroy functions are missing\n";
+        logger->error("Plugin validation failed: create and/or destroy functions are missing");
         dlclose(runtime.library);
         runtimes.erase(uuid);
         return false;
@@ -173,8 +158,7 @@ bool PluginManager::load_plugin(
     // Check that at least one of init_sensors or init_actors is implemented
     if (!runtime.plugin->init_sensors && !runtime.plugin->init_actors)
     {
-        std::cerr
-            << "Plugin validation failed: at least one of init_sensors or init_actors must be implemented\n";
+        logger->error("Plugin validation failed: at least one of init_sensors or init_actors must be implemented");
         dlclose(runtime.library);
         runtimes.erase(uuid);
         return false;
@@ -182,8 +166,7 @@ bool PluginManager::load_plugin(
 
     if (!runtime.plugin->finit)
     {
-        std::cerr
-            << "Plugin validation failed: finit function is missing\n";
+        logger->error("Plugin validation failed: finit function is missing");
         dlclose(runtime.library);
         runtimes.erase(uuid);
         return false;
@@ -192,8 +175,7 @@ bool PluginManager::load_plugin(
     // Validate configurator function is provided
     if (!runtime.plugin->configurator)
     {
-        std::cerr
-            << "Plugin validation failed: configurator function is missing\n";
+        logger->error("Plugin validation failed: configurator function is missing");
         dlclose(runtime.library);
         runtimes.erase(uuid);
         return false;
@@ -202,8 +184,7 @@ bool PluginManager::load_plugin(
     // Validate run function is provided
     if (!runtime.plugin->run)
     {
-        std::cerr
-            << "Plugin validation failed: run function is missing\n";
+        logger->error("Plugin validation failed: run function is missing");
         dlclose(runtime.library);
         runtimes.erase(uuid);
         return false;
@@ -212,8 +193,7 @@ bool PluginManager::load_plugin(
     // Validate free_config function is provided
     if (!runtime.plugin->free_config)
     {
-        std::cerr
-            << "Plugin validation failed: free_config function is missing\n";
+        logger->error("Plugin validation failed: free_config function is missing");
         dlclose(runtime.library);
         runtimes.erase(uuid);
         return false;
@@ -227,8 +207,7 @@ bool PluginManager::load_plugin(
     }
     catch (const YAML::Exception& e)
     {
-        std::cerr
-            << "Failed to load config file '" << configFile << "': " << e.what() << '\n';
+        logger->error("Failed to load config file '{}': {}", configFile, e.what());
             dlclose(runtime.library);
         runtimes.erase(uuid);
         return false;
@@ -240,10 +219,7 @@ bool PluginManager::load_plugin(
         runtime.config = runtime.plugin->configurator(static_cast<void*>(yaml)); // or just = yaml;//!
         if (!runtime.config)
         {
-        std::cerr
-                << "Plugin configurator failed to load config from \""
-                << configFile
-                << "\"\n";
+            logger->error("Plugin configurator failed to load config from \"{}\"", configFile);
             dlclose(runtime.library);
             runtimes.erase(uuid);
         return false;
@@ -254,12 +230,7 @@ bool PluginManager::load_plugin(
     runtime.initialized = false;
     runtime.running = false;
 
-    std::cerr
-        << "Loaded plugin \""
-        << uuid
-        << "\" from "
-        << path
-        << std::endl;
+    logger->info("Loaded plugin \"{}\" from {}", uuid, path);
     return true;
 }
 
@@ -276,18 +247,14 @@ bool PluginManager::init_plugin(
 
     if (runtime->initialized)
     {
-        std::cerr
-            << "Plugin \"" << uuid
-            << "\" is already initialized" << std::endl;
+        logger->error("Plugin \"{}\" is already initialized", uuid);
         return false;
     }
 
     // Check if plugin is running - cannot re-initialize a running plugin
     if (runtime->running)
     {
-        std::cerr
-            << "Plugin \"" << uuid
-            << "\" is running. Stop the plugin before re-initializing." << std::endl;
+        logger->error("Plugin \"{}\" is running. Stop the plugin before re-initializing.", uuid);
         return false;
     }
 
@@ -301,6 +268,9 @@ bool PluginManager::init_plugin(
     {
         runtime->downstream_connections_initialized = runtime->plugin->init_downstream_connections(runtime);
     }
+
+    // Create logger for the plugin
+    logger = logging.create(std::string("plugin.") + uuid);
 
     // Initialize sensors if the function is implemented
     if (runtime->plugin->init_sensors)
@@ -318,8 +288,7 @@ bool PluginManager::init_plugin(
     // This allows plugins to initialize either sensors, actors, or both
     if (!runtime->sensors_initialized && !runtime->actors_initialized)
     {
-        std::cerr
-            << "Plugin validation failed during the initialization: both sensors and actors are missing" << std::endl;
+        logger->error("Plugin validation failed during the initialization: both sensors and actors are missing");
         unload_plugin(uuid);
         return false;
     }
@@ -341,27 +310,21 @@ bool PluginManager::start_plugin(
     // Check if plugin is already started
     if (!runtime->loaded)
     {
-        std::cerr
-            << "Plugin \"" << uuid
-            << "\" is not loaded" << std::endl;
+        logger->error("Plugin \"{}\" is not loaded", uuid);
         return false;
     }
 
     // Check if plugin is already started
     if (!runtime->initialized)
     {
-        std::cerr
-            << "Plugin \"" << uuid
-            << "\" is not initialized" << std::endl;
+        logger->error("Plugin \"{}\" is not initialized", uuid);
         return false;
     }
 
     // Check if plugin is already started
     if (runtime->running)
     {
-        std::cerr
-            << "Plugin \"" << uuid
-            << "\" is already running" << std::endl;
+        logger->error("Plugin \"{}\" is already running", uuid);
     return false;
 }
 
@@ -378,7 +341,7 @@ bool PluginManager::start_plugin(
                 }
             );
         } catch (const std::system_error& e) {
-            std::cerr << "Failed to create thread for plugin \"" << uuid << "\": " << e.what() << std::endl;
+            logger->error("Failed to create thread for plugin \"{}\": {}", uuid, e.what());
             return false;
         }
     }
@@ -399,9 +362,7 @@ bool PluginManager::stop_plugin(
     // Check if plugin is running before stopping
     if (!runtime->running)
     {
-        std::cerr
-            << "Plugin \"" << uuid
-            << "\" is not running" << std::endl;
+        logger->error("Plugin \"{}\" is not running", uuid);
     return false;
 }
 
@@ -431,18 +392,14 @@ bool PluginManager::unload_plugin(
     // Check if plugin is running - cannot unload running plugin
     if (runtime->running)
     {
-        std::cerr
-            << "Plugin \"" << uuid
-            << "\" is still running. Stop the plugin before unloading." << std::endl;
+        logger->error("Plugin \"{}\" is still running. Stop the plugin before unloading.", uuid);
     return false;
 }
 
     // Check if plugin is initialized - cannot unload initialized plugin
     if (runtime->initialized)
     {
-        std::cerr
-            << "Plugin \"" << uuid
-            << "\" is still initialized. Finalize the plugin before unloading." << std::endl;
+        logger->error("Plugin \"{}\" is still initialized. Finalize the plugin before unloading.", uuid);
         return false;
     }
 
@@ -535,32 +492,26 @@ void PluginManager::print_loaded_plugins() const
 {
     if (runtimes.empty())
     {
-        std::cout << "No plugins loaded" << std::endl;
+	logger->info("No plugins loaded");
         return;
     }
 
-    std::cout << "Loaded plugins:" << std::endl;
+    logger->info("Loaded plugins:");
     for (const auto &pair : runtimes)
     {
-        std::cout << "  UUID: " << pair.first;
+        logger->info("  UUID: ");
         // Note: config.name is no longer directly accessible in runtime_t
         // It would be in the plugin-specific config object pointed to by plugin->config
         // Add capabilities
         auto capabilities = get_plugin_capabilities(pair.first.c_str());
-        if (!capabilities.empty())
-        {
-            std::cout << ", Capabilities: ";
-            for (size_t i = 0; i < capabilities.size(); ++i)
-            {
-                std::cout << capabilities[i];
-                if (i < capabilities.size() - 1)
-                {
-                    std::cout << ", ";
-                }
-            }
-        }
 
-        std::cout << std::endl;
+        if (!capabilities.empty())
+	{
+	    logger->info(
+            "Capabilities: {}",
+            fmt::join(capabilities, ", ")
+		);
+	}
     }
 }
 
@@ -618,3 +569,4 @@ bool PluginManager::unload_plugin()
         unload_plugin(uuid);
     }
 }
+

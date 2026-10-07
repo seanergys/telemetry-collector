@@ -24,6 +24,8 @@
 #include <seanerbus/helpers/resolve.hpp>
 
 static std::map<std::string, SensorReading *> sensor_values;
+static Logger logging;
+static std::shared_ptr<spdlog::logger> logger;
 
 // Global plugin instance
 plugin_interface_t plugin =
@@ -49,6 +51,7 @@ void *sensor_sense(void *sensor);
 
 void *sysfs_create(void)
 {
+    logger = logging.create("telemetry-collector::sysfs");
     // Return a pointer to the plugin_interface_t object as the instance
     return &plugin;
 }
@@ -114,7 +117,7 @@ bool applyTemplateConfigs(const YAML::Node &node, const YAML::Node &templates, s
 
     if (!tmpl)
     {
-        std::cout << "Unknown template referenced: '" << tmplName << "'" << std::endl;
+        logger->warn("Unknown template referenced: '{}'", tmplName);
         return false;
     }
 
@@ -154,7 +157,7 @@ bool sysfs_init_sensors(void *runtime)
             name_str += k + "=" + v + ",";
         }
         name_str.pop_back();
-        std::cout << "Registering sensor {" << name_str << "}: " << conf->uuid << std::endl;
+        logger->info("Registering sensor {{}}: {}", name_str, conf->uuid);
 
         seanerbus::resolve::register_resolve(conn, conf->name, addr,
                                              [](seanerbus::client::Connection &conn,
@@ -167,7 +170,7 @@ bool sysfs_init_sensors(void *runtime)
                                                  }
                                              });
     }
-    
+
     seanerbus::client::SimpleEventLoop sl(conn);
     sl.run();
 
@@ -239,14 +242,12 @@ void getPayload(sensor_attribute_t *conf, SensorReading *tv)
     FILE *fp = fopen(conf->path, "r");
     if (fp == nullptr)
     {
-        std::cout << "Error opening file: " << conf->path
-                  << " error: " << strerror(errno) << std::endl;
+        logger->error("Error opening file: {} error: {}", conf->path, strerror(errno));
     }
 
     char buf[1024];
     if (fgets(buf, sizeof(buf), fp) == nullptr)
     {
-        std::cout << "Error reading line from: " << conf->path << std::endl;
         fclose(fp);
     }
     fclose(fp);
@@ -270,12 +271,12 @@ void getPayload(sensor_attribute_t *conf, SensorReading *tv)
         std::regex re(conf->filter);
         if (!std::regex_search(buf, match, re) || match.size() < 2)
         {
-            std::cout << "No match for pattern '" << conf->filter << "' in line: " << buf << std::endl;
+            logger->warn("No match for pattern '{}' in line: {}", conf->filter, buf);
         }
         valueStr = match[1].str();
     }
 
-    std::cout << "sensor path" << conf->path << " value " << std::stod(valueStr) << " factor" << conf->factor << " offset" << conf->offset << std::endl;
+    logger->debug("sensor path {} value {} factor {} offset {}", conf->path, std::stod(valueStr), conf->factor, conf->offset);
 
     tv->time = getTimestamp();
     tv->value = _applyFactorOffset(std::stod(valueStr), conf->factor, conf->offset);
@@ -292,7 +293,7 @@ void *sensor_sense(void *sensor)
     getPayload(conf, tv);
 
     // Print the sensor data
-    std::cout << "[" << conf->uuid << "] value=" << tv->value << ", timestamp=" << tv->time << std::endl;
+    logger->debug("[{}] value={}, timestamp={}", conf->uuid, tv->value, tv->time);
     return tv;
 }
 
@@ -319,7 +320,7 @@ void on_publish(seanerbus::client::Connection &conn,
 {
     if (!err.ok())
     {
-        std::cerr << "Publishing failed: " << err.unwrap_error().what() << "\n";
+        logger->error("Publishing failed: {}", err.unwrap_error().what());
         conn.shutdown(); // error path only — matches the base example
         return;
     }
@@ -378,7 +379,7 @@ void *sysfs_run(void *runtime)
 
     if (!conn.result().ok())
     {
-        std::cerr << "publish_test failed: " << conn.result().get_error().what();
+        logger->error("publish_test failed: {}", conn.result().get_error().what());
         // return -1;
     }
 }
@@ -395,12 +396,12 @@ void *sysfs_configurator(void *configPtr)
     const YAML::Node &templates = config["sensor_templates"];
     if (!templates)
     {
-        std::cout << "No sensor_templates" << std::endl;
+        logger->info("No sensor_templates");
     }
 
     if (!config["sensor_groups"])
     {
-        std::cout << "Missing sensor_groups" << std::endl;
+        logger->error("Missing sensor_groups");
         return yaml;
     }
 
@@ -414,7 +415,7 @@ void *sysfs_configurator(void *configPtr)
         // sensor list check
         if (!group["sensors"])
         {
-            std::cout << "Group '" << groupName << "' missing sensors list" << std::endl;
+            logger->error("Group '{}' missing sensors list", groupName);
             continue;
         }
 

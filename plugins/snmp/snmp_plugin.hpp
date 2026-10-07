@@ -2,12 +2,14 @@
 
 #include <chrono>
 #include <cstdint>
+#include <memory>
 #include <string>
 #include <unordered_map>
 #include <vector>
 #include <net-snmp/net-snmp-config.h>
 #include <net-snmp/net-snmp-includes.h>
 
+#include "logger.hpp"
 #include "plugin.hpp"
 #include "types.hpp"
 

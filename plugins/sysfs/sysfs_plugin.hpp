@@ -2,10 +2,12 @@
 
 #include <chrono>
 #include <cstdint>
+#include <memory>
 #include <string>
 #include <unordered_map>
 #include <vector>
 
+#include "logger.hpp"
 #include "plugin.hpp"
 #include "types.hpp"
 

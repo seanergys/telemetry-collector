@@ -4,7 +4,7 @@
 #include "plugin.hpp"
 #include "config.hpp"
 
-std::vector<config_t> load_tc_config(const char* filename)
+std::vector<config_t> load_tc_config(const char* filename, std::shared_ptr<spdlog::logger> logger)
 {
     std::vector<config_t> plugin_configs;
 
@@ -33,13 +33,11 @@ std::vector<config_t> load_tc_config(const char* filename)
     }
     catch (const YAML::Exception& e)
     {
-        std::cerr << "YAML error loading '" << filename
-                << "': " << e.what() << '\n';
+        logger->error("YAML error loading '{}': {}", filename, e.what());
     }
     catch (const std::exception& e)
     {
-        std::cerr << "Error loading '" << filename
-                << "': " << e.what() << '\n';
+        logger->error("Error loading '{}': {}", filename, e.what());
     }
 
     return plugin_configs;

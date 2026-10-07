@@ -18,14 +18,14 @@
 
 #include "tester_plugin.hpp"
 
-#include <seanerbus/client/connection.hpp>
-
+#include "seanerbus/client/connection.hpp"
 #include "seanerbus/client/simple_event_loop.hpp"
-//#include "seanerbus/internal/message.hpp"
 
 #include <seanerbus/helpers/resolve.hpp>
 
 static std::map<std::string, SensorReading *> sensor_values;
+static Logger logging;
+static std::shared_ptr<spdlog::logger> logger;
 
 // Global plugin instance
 plugin_interface_t plugin =
@@ -39,16 +39,19 @@ plugin_interface_t plugin =
         nullptr,
         nullptr,
         tester_run,          // run function
-        nullptr,             // req
-        nullptr,             // res
+        nullptr,            // req
+        nullptr,            // res
         tester_configurator, // configurator function
         tester_free_config,  // free_config function
 };
 
 void *sensor_sense(void *sensor);
 
+// Global sensor values map for the sense function
+
 void *tester_create(void)
 {
+    logger = logging.create("telemetry-collector::tester");
     // Return a pointer to the plugin_interface_t object as the instance
     return &plugin;
 }
@@ -89,7 +92,9 @@ void applyFields(const YAML::Node &node, sensor_attribute_t *conf)
             conf->name[k] = v;
 	}
     }
+
 }
+
 bool applyTemplateConfigs(const YAML::Node &node, const YAML::Node &templates, sensor_attribute_t *conf)
 {
     if (!node["template"] || !templates)
@@ -102,7 +107,7 @@ bool applyTemplateConfigs(const YAML::Node &node, const YAML::Node &templates, s
 
     if (!tmpl)
     {
-        std::cout << "Unknown template referenced: '" << tmplName << "'" << std::endl;
+        logger->warn("Unknown template referenced: '{}'", tmplName);
         return false;
     }
 
@@ -141,9 +146,9 @@ bool tester_init_sensors(void *runtime)
         {
             name_str += k + "=" + v + ",";
         }
+        std::cout << "test" << std::endl;
         name_str.pop_back();
-        std::cout << "Registering sensor {" << name_str << "}: " << conf->uuid << std::endl;
-
+        logger->info("Registering sensor {{}}: {}", name_str, conf->uuid);
         seanerbus::resolve::register_resolve(conn, conf->name, addr,
                                              [](seanerbus::client::Connection &conn,
                                                 seanerbus::Expected<void, seanerbus::Error> res)
@@ -155,7 +160,7 @@ bool tester_init_sensors(void *runtime)
                                                  }
                                              });
     }
-    
+
     seanerbus::client::SimpleEventLoop sl(conn);
     sl.run();
 
@@ -165,8 +170,6 @@ bool tester_init_sensors(void *runtime)
 
 bool tester_finit(void *runtime)
 {
-
-    // Clear the map
     for (auto &pair : ::configs)
     {
         sensor_attribute_t *conf = pair.second;
@@ -204,11 +207,6 @@ bool tester_finit(void *runtime)
     // Clear the sensor_values map as well
     sensor_values.clear();
 
-    // Reset num_sensors in runtime
-    // if (runtime) {
-    //    ((runtime_t*)runtime)->num_sensors = 0;
-    //}
-
     return true;
 }
 
@@ -231,7 +229,7 @@ void *sensor_sense(void *sensor)
     tv->value++;
 
     // Print the sensor data
-    std::cout << "[" << conf->uuid << "] value=" << tv->value << ", timestamp=" << tv->time << std::endl;
+    logger->debug("[{}] value={}, timestamp={}", conf->uuid, tv->value, tv->time);
     return tv;
 }
 
@@ -258,13 +256,12 @@ void on_publish(seanerbus::client::Connection &conn,
 {
     if (!err.ok())
     {
-        std::cerr << "Publishing failed: " << err.unwrap_error().what() << "\n";
+        logger->error("Publishing failed: {}", err.unwrap_error().what());
         conn.shutdown(); // error path only — matches the base example
         return;
     }
     read_publish_schedule_next(conn, queue);
 }
-
 void read_publish_schedule_next(seanerbus::client::Connection &conn,
                                 std::priority_queue<ScheduledSensor, std::vector<ScheduledSensor>, CompareNextRun> &queue)
 {
@@ -311,7 +308,6 @@ void *tester_run(void *runtime)
         queue.push({std::chrono::steady_clock::now(),
                     s.second});
     }
-
     seanerbus::client::Connection conn("demobus://localhost:5398", "demobus://localhost:5398");
     read_publish_schedule_next(conn, queue);
 
@@ -320,7 +316,7 @@ void *tester_run(void *runtime)
 
     if (!conn.result().ok())
     {
-        std::cerr << "publish_test failed: " << conn.result().get_error().what();
+        logger->error("publish_test failed: {}", conn.result().get_error().what());
         // return -1;
     }
 }
@@ -337,12 +333,12 @@ void *tester_configurator(void *configPtr)
     const YAML::Node &templates = config["sensor_templates"];
     if (!templates)
     {
-        std::cout << "No sensor_templates" << std::endl;
+        logger->info("No sensor_templates");
     }
 
     if (!config["sensor_groups"])
     {
-        std::cout << "Missing sensor_groups" << std::endl;
+        logger->error("Missing sensor_groups");
         return yaml;
     }
 
@@ -356,7 +352,7 @@ void *tester_configurator(void *configPtr)
         // sensor list check
         if (!group["sensors"])
         {
-            std::cout << "Group '" << groupName << "' missing sensors list" << std::endl;
+	    logger->info("Group {} missing sensors list", groupName);
             continue;
         }
 
