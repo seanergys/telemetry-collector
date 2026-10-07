@@ -51,7 +51,5 @@ dependency(
     GIT_REPOSITORY https://github.com/gabime/spdlog.git
     GIT_TAG v1.17.0
     BUILD_TOOL cmake
-    CMAKE_ARGS             
-        -DSPDLOG_FMT_EXTERNAL=ON
     LIBRARIES spdlog
 )
