@@ -62,13 +62,11 @@ test:
   stage: test
   script:
     - cd install
-    - ls
     - test -f bin/telemetry_collector|| (echo "missing bin/telemetry_collector"; exit 1)
     - PLUGIN_INSTALL_DIR="lib/telemetry_collector/plugins" 
     - |
       for p in $(echo "$TC_PLUGINS" | tr ';' ' '); do
-        f="$PLUGIN_INSTALL_DIR/$p.so"
-        if test -f "$f"; then echo "ok: $f"; else echo "missing: $f";exit 1; fi
+        test -f "$PLUGIN_INSTALL_DIR/$p.so" || { echo "missing $PLUGIN_INSTALL_DIR/$p.so"; exit 1; }
       done
   artifacts:
     paths:
