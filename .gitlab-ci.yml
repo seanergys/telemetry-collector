@@ -2,6 +2,9 @@ variables:
   SEANERBUS_COMMIT:
     value: "1b20571854fe45c13bdef687e26f04cd4d272bb2"
     description: "seanerbus main commit"
+  TC_PLUGINS:
+    value: "tester;sysfs;mock"
+    description: "tc plugins to test"
 
 stages:
   - deps
@@ -45,7 +48,7 @@ build:
     - ls
     - apt-get update && apt-get install -y git cmake capnproto libcapnp-dev build-essential libyaml-cpp-dev snmp snmpd libsnmp-dev  catch2 libcatch2-dev pkg-config file 
     - mkdir build && cd build
-    - cmake -DPLUGINS="tester;sysfs;mock" -DSEANERBUS_ROOT=../seanerbus-cpp/install -DCAPNP_ROOT=/usr -DCMAKE_INSTALL_PREFIX=../install ..
+    - cmake -DPLUGINS="$TC_PLUGINS" -DSEANERBUS_ROOT=../seanerbus-cpp/install -DCAPNP_ROOT=/usr -DCMAKE_INSTALL_PREFIX=../install ..
     - make -j4 install
     - ls
   artifacts:
@@ -61,11 +64,12 @@ test:
     - cd install
     - ls
     - test -f bin/telemetry_collector|| (echo "missing bin/telemetry_collector"; exit 1)
-    
-    - plugin_install_dir="lib/telemetry_collector/plugins" 
-    - test -f "$plugin_install_dir/tester.so" || (echo "missing $plugin_install_dir/tester.so"; exit 1)
-    - test -f "$plugin_install_dir/sysfs.so" || (echo "missing $plugin_install_dir/sysfs.so"; exit 1)
-    - test -f "$plugin_install_dir/snmp.so" || (echo "missing $plugin_install_dir/snmp.so"; exit 1)
+    - PLUGIN_INSTALL_DIR="lib/telemetry_collector/plugins" 
+    - |
+      for p in $(echo "$TC_PLUGINS" | tr ';' ' '); do
+        f="$PLUGIN_INSTALL_DIR/$p.so"
+        if test -f "$f"; then echo "ok: $f"; else echo "missing: $f";exit 1; fi
+      done
   artifacts:
     paths:
       - "**/*"
