@@ -1,3 +1,11 @@
+variables:
+  SEANERBUS_COMMIT:
+    value: "1b20571854fe45c13bdef687e26f04cd4d272bb2"
+    description: "seanerbus main commit"
+  TC_PLUGINS:
+    value: "tester;sysfs;mock"
+    description: "tc plugins to test"
+
 stages:
   - deps
   - pkgdeps
@@ -14,16 +22,18 @@ pkgdeps:
   script:    
     - ls
     - pwd
-    - apt-get update && apt-get install -y git cmake capnproto libcapnp-dev build-essential libyaml-cpp-dev snmp snmpd libsnmp-dev  catch2 libcatch2-dev pkg-config 
+    - apt-get update && apt-get install -y git cmake capnproto libcapnp-dev build-essential libyaml-cpp-dev snmp snmpd libsnmp-dev  catch2 libcatch2-dev pkg-config  file
     - rm -rf seanerbus-cpp
     - git clone https://software_token:$software_token@gitlab.seanergys.fz-juelich.de/software/seanerbus-cpp.git
     - cd seanerbus-cpp
+    - if [ -n "$SEANERBUS_COMMIT" ]; then git checkout $SEANERBUS_COMMIT; fi
     - git clone https://software_token:$software_token@gitlab.seanergys.fz-juelich.de/software/seanerbus-msg.git schemas
+    - cd schemas && git checkout 9f9c214 && cd ..
     - git clone https://github.com/fmtlib/fmt.git lib/fmt
     - mkdir build
     - cd build
     - cmake .. -DCMAKE_INSTALL_PREFIX=../install -DCMAKE_POSITION_INDEPENDENT_CODE=ON
-    - make -j install
+    - make -j4 install
   artifacts:
     paths:
       - seanerbus-cpp/
@@ -36,9 +46,10 @@ build:
   needs: ["pkgdeps"]
   script:
     - ls
-    - apt-get update && apt-get install -y git cmake capnproto libcapnp-dev build-essential libyaml-cpp-dev snmp snmpd libsnmp-dev  catch2 libcatch2-dev pkg-config 
-    - export make_for="CI"
-    - make -j 
+    - apt-get update && apt-get install -y git cmake capnproto libcapnp-dev build-essential libyaml-cpp-dev snmp snmpd libsnmp-dev  catch2 libcatch2-dev pkg-config file 
+    - mkdir build && cd build
+    - cmake -DSELECTED_PLUGINS="$TC_PLUGINS" -DSEANERBUS_ROOT=../seanerbus-cpp/install -DCAPNP_ROOT=/usr -DCMAKE_INSTALL_PREFIX=../install ..
+    - make -j4 install
     - ls
   artifacts:
     paths:
@@ -50,7 +61,13 @@ test:
   image: debian:testing-slim
   stage: test
   script:
-    - test -f telemetry-collector || -f plugins/sysfs.so || test -f plugins/tester.so || exit 1
+    - cd install
+    - test -f bin/telemetry_collector|| (echo "missing bin/telemetry_collector"; exit 1)
+    - PLUGIN_INSTALL_DIR="lib/telemetry_collector/plugins" 
+    - |
+      for p in $(echo "$TC_PLUGINS" | tr ';' ' '); do
+        test -f "$PLUGIN_INSTALL_DIR/$p.so" || { echo "missing $PLUGIN_INSTALL_DIR/$p.so"; exit 1; }
+      done
   artifacts:
     paths:
       - "**/*"

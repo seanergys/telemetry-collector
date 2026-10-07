@@ -113,10 +113,7 @@ find_package(
     REQUIRED
 )
 
-set(
-    ENV{PKG_CONFIG_PATH}
-    "${SEANERBUS_ROOT}/lib64/pkgconfig:${CAPNP_ROOT}/lib/pkgconfig:$ENV{PKG_CONFIG_PATH}"
-)
+list(APPEND CMAKE_PREFIX_PATH "${SEANERBUS_ROOT}" "${CAPNP_ROOT}")
 
 message(
     STATUS
@@ -129,6 +126,14 @@ pkg_check_modules(
     IMPORTED_TARGET
     seanerbus
 )
+
+pkg_check_modules(
+    CAPNP 
+    REQUIRED 
+    IMPORTED_TARGET 
+    capnp
+)
+
 
 # ============================================================================
 # Plugins

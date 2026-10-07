@@ -24,6 +24,7 @@ dependency(
         --with-defaults
         --disable-agent
         --disable-manuals
+        --disable-applications
     LIBRARIES netsnmp
 )
 
