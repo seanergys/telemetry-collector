@@ -32,7 +32,7 @@ pkgdeps:
     - make -j4 install VERBOSE=1
   artifacts:
     paths:
-      - seanerbus-cpp/
+      - install/
     expire_in: 1 hour
 
 
