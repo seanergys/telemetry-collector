@@ -25,7 +25,8 @@ pkgdeps:
     - if [ -n "$SEANERBUS_COMMIT" ]; then git checkout $SEANERBUS_COMMIT; fi
     - git clone https://software_token:$software_token@gitlab.seanergys.fz-juelich.de/software/seanerbus-msg.git schemas
     - cd schemas && git checkout 9f9c214 && cd ..
-    - git clone https://github.com/fmtlib/fmt.git lib/fmt
+    #- git clone https://github.com/fmtlib/fmt.git lib/fmt
+    - git clone --branch 12.2.0 --depth 1 https://github.com/fmtlib/fmt.git lib/fmt
     - mkdir build
     - cd build
     - cmake .. -DCMAKE_INSTALL_PREFIX=../../install -DCMAKE_POSITION_INDEPENDENT_CODE=ON
