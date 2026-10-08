@@ -12,10 +12,6 @@ stages:
   - build
   - test
 
-workflow:
-  rules:
-    - if: $CI_PIPELINE_SOURCE == "push"
-
 pkgdeps:
   image: debian:testing-slim
   stage: pkgdeps
