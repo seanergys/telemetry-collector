@@ -199,7 +199,7 @@ foreach(plugin IN LISTS SELECTED_PLUGINS)
 
     target_include_directories(
         "${plugin}"
-        PRIVATE
+        PRIVATE BEFORE
             "${CMAKE_CURRENT_SOURCE_DIR}/include"
             "${CMAKE_CURRENT_SOURCE_DIR}/plugins/${plugin}"
     )
@@ -212,8 +212,8 @@ foreach(plugin IN LISTS SELECTED_PLUGINS)
     target_link_libraries(
         "${plugin}"
         PRIVATE
-            PkgConfig::SEANERBUS
             spdlog::spdlog
+            PkgConfig::SEANERBUS
     )
 
     foreach(dep IN LISTS plugin_dependencies)

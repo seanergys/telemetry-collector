@@ -12,10 +12,6 @@ stages:
   - build
   - test
 
-workflow:
-  rules:
-    - if: $CI_PIPELINE_SOURCE == "push"
-
 pkgdeps:
   image: debian:testing-slim
   stage: pkgdeps
@@ -29,14 +25,14 @@ pkgdeps:
     - if [ -n "$SEANERBUS_COMMIT" ]; then git checkout $SEANERBUS_COMMIT; fi
     - git clone https://software_token:$software_token@gitlab.seanergys.fz-juelich.de/software/seanerbus-msg.git schemas
     - cd schemas && git checkout 9f9c214 && cd ..
-    - git clone https://github.com/fmtlib/fmt.git lib/fmt
+    - git clone --branch 12.2.0 --depth 1 https://github.com/fmtlib/fmt.git lib/fmt
     - mkdir build
     - cd build
-    - cmake .. -DCMAKE_INSTALL_PREFIX=../install -DCMAKE_POSITION_INDEPENDENT_CODE=ON
-    - make -j4 install
+    - cmake .. -DCMAKE_INSTALL_PREFIX=../../install -DCMAKE_POSITION_INDEPENDENT_CODE=ON
+    - make -j4 install VERBOSE=1
   artifacts:
     paths:
-      - seanerbus-cpp/
+      - install/
     expire_in: 1 hour
 
 
@@ -48,8 +44,9 @@ build:
     - ls
     - apt-get update && apt-get install -y git cmake capnproto libcapnp-dev build-essential libyaml-cpp-dev snmp snmpd libsnmp-dev  catch2 libcatch2-dev pkg-config file 
     - mkdir build && cd build
-    - cmake -DSELECTED_PLUGINS="$TC_PLUGINS" -DSEANERBUS_ROOT=../seanerbus-cpp/install -DCAPNP_ROOT=/usr -DCMAKE_INSTALL_PREFIX=../install ..
-    - make -j4 install
+    - cmake -DSELECTED_PLUGINS="$TC_PLUGINS" -DSEANERBUS_ROOT=../install -DCAPNP_ROOT=/usr -DCMAKE_INSTALL_PREFIX=../install  -DSPDLOG_FMT_EXTERNAL=ON .. 
+
+    - make -j4 install  VERBOSE=1
     - ls
   artifacts:
     paths:
