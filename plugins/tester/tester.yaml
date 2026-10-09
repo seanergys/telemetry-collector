@@ -5,7 +5,7 @@ sensor_templates:
   temp: 
     interval_ms: 5000
     factor: 0.001
-    name_part:
+    nameserver_parts:
       socket: 1
 
 sensor_groups:
@@ -15,25 +15,25 @@ sensor_groups:
 
     sensors:
       - uuid: 7bc3d210-a49f-4422-8fe8-26ca480d0e1a
-        name_part:
+        nameserver_parts:
           metric: temperature
         interval_ms: 1000
         unit: C
 
       - uuid: 7bc3d210-a49f-4422-8fe8-26ca480d0e1b
-        name_part:
+        nameserver_parts:
           metric: humidity
         interval_ms: 1000
         unit: "%"
 
       - uuid: 7bc3d210-a49f-4422-8fe8-26ca480d0e1c
-        name_part:
+        nameserver_parts:
           metric: pressure
         interval_ms: 5000
         unit: hPa
 
       - uuid: 7bc3d210-a49f-4422-8fe8-26ca480d0e1f
-        name_part:
+        nameserver_parts:
           metric: flow
         interval_ms: 5000
         unit: l/min

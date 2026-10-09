@@ -157,8 +157,6 @@ bool sysfs_init_sensors(void *runtime)
 
         if (!has_hostname)
         {
-            char hostname[HOST_NAME_MAX + 1];
-            gethostname(hostname, sizeof(hostname) - 1);
             conf->nameserver_parts["hostname"] = hostname;
         }
 

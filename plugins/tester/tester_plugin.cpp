@@ -39,8 +39,8 @@ plugin_interface_t plugin =
         nullptr,
         nullptr,
         tester_run,          // run function
-        nullptr,            // req
-        nullptr,            // res
+        nullptr,             // req
+        nullptr,             // res
         tester_configurator, // configurator function
         tester_free_config,  // free_config function
 };
@@ -84,15 +84,17 @@ void applyFields(const YAML::Node &node, sensor_attribute_t *conf)
     if (node["unit"])
         setCharField(conf->unit, node["unit"].as<std::string>());
 
-    if (node["name_part"])
+    if (node["nameserver_parts"])
     {
-	for (const auto & p : node["name_part"]) {
-    	    std::string k = p.first.as<std::string>();;
-    	    std::string v =p.second.as<std::string>();;
-            conf->name[k] = v;
-	}
+        for (const auto &p : node["nameserver_parts"])
+        {
+            std::string k = p.first.as<std::string>();
+            ;
+            std::string v = p.second.as<std::string>();
+            ;
+            conf->nameserver_parts[k] = v;
+        }
     }
-
 }
 
 bool applyTemplateConfigs(const YAML::Node &node, const YAML::Node &templates, sensor_attribute_t *conf)
@@ -139,25 +141,33 @@ bool tester_init_sensors(void *runtime)
 
         auto addr = seanerbus::msg::Address{seanerbus::msg::Uuid{conf->uuid}};
 
-        conf->name["node"] = std::string(hostname);
+        // appending hostname to the name []
+        auto it = conf->nameserver_parts.find("hostname");
+        const bool has_hostname = it != conf->nameserver_parts.end() && !it->second.empty();
 
-        std::string name_str;
-        for (const auto &[k, v] : conf->name)
+        if (!has_hostname)
         {
-            name_str += k + "=" + v + ",";
+            conf->nameserver_parts["hostname"] = hostname;
         }
-        std::cout << "test" << std::endl;
-        name_str.pop_back();
-        logger->info("Registering sensor {{}}: {}", name_str, conf->uuid);
-        seanerbus::resolve::register_resolve(conn, conf->name, addr,
+
+        std::string nameserver_parts_str;
+        for (const auto &[k, v] : conf->nameserver_parts)
+        {
+            nameserver_parts_str += k + "=" + v + ",";
+        }
+        nameserver_parts_str.pop_back();
+        logger->info("Registering sensor {{}}: {}", nameserver_parts_str, conf->uuid);
+
+        seanerbus::resolve::register_resolve(conn, conf->nameserver_parts, addr,
                                              [](seanerbus::client::Connection &conn,
                                                 seanerbus::Expected<void, seanerbus::Error> res)
                                              {
                                                  if (!res.ok())
                                                  {
                                                      conn.shutdown();
-                                                     return true;
+                                                     return;
                                                  }
+                                                 conn.shutdown();
                                              });
     }
 
@@ -352,7 +362,7 @@ void *tester_configurator(void *configPtr)
         // sensor list check
         if (!group["sensors"])
         {
-	    logger->info("Group {} missing sensors list", groupName);
+            logger->info("Group {} missing sensors list", groupName);
             continue;
         }
 
