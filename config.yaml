@@ -1,5 +1,5 @@
 seanerbus:
-  url: localhost:5398
+  url: 10.42.0.69:5398
 
 plugins:
 
@@ -7,7 +7,11 @@ plugins:
   #   config: /home/di93zad/seanergys/telemetry-collector/plugins/sysfs/sysfs.yaml
   #   uuid: e94e6e91-a83d-4e04-a147-aab3860d0cd9
   #   name: sysfs
-  - path: /home/di93zad/seanergys/telemetry-collector/install/lib64/telemetry_collector/plugins/tester.so
-    config: /home/di93zad/seanergys/telemetry-collector/plugins/tester/tester.yaml
+  # - path: /home/di93zad/seanergys/telemetry-collector/install/lib64/telemetry_collector/plugins/tester.so
+  #   config: /home/di93zad/seanergys/telemetry-collector/plugins/tester/tester.yaml
+  #   uuid: e94e6e91-a83d-4e04-a147-aab3860d0cd9
+  #   name: tester
+  - path: /home/di93zad/seanergys/telemetry-collector/install/lib64/telemetry_collector/plugins/snmp.so
+    config: /home/di93zad/seanergys/telemetry-collector/plugins/snmp/snmp.yaml
     uuid: e94e6e91-a83d-4e04-a147-aab3860d0cd9
-    name: tester
+    name: snmp

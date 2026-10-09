@@ -16,7 +16,7 @@
 
 #include <seanerbus/client/connection.hpp>
 #include "seanerbus/client/simple_event_loop.hpp"
-//#include "seanerbus/helpers/noexcept.hpp"
+#include <seanerbus/helpers/resolve.hpp>
 
 static std::map<std::string, SensorReading *> sensor_values;
 static Logger logging;
@@ -133,6 +133,18 @@ void applyFields(const YAML::Node &node, sensor_attribute_t *conf)
         conf->oid_prefix = node["oid_prefix"].as<std::string>();
     if (node["oid_suffix"])
         conf->oid_suffix = node["oid_suffix"].as<std::string>();
+
+    if (node["nameserver_parts"])
+    {
+        for (const auto &p : node["nameserver_parts"])
+        {
+            std::string k = p.first.as<std::string>();
+            ;
+            std::string v = p.second.as<std::string>();
+            ;
+            conf->nameserver_parts[k] = v;
+        }
+    }
 }
 
 bool applyTemplateConfigs(const YAML::Node &node, const YAML::Node &templates, sensor_attribute_t *conf)
@@ -239,10 +251,10 @@ void setup_snmp_session(sensor_attribute_t *conf)
                 /* set the privacy key to a hashed version of our
                 _privKey (which must be at least 8 characters long) */
                 if (generate_Ku(conf->snmpSession.securityAuthProto, conf->snmpSession.securityAuthProtoLen, (u_char *)conf->privKey.c_str(),
-                                                conf->privKey.length(), conf->snmpSession.securityPrivKey, &conf->snmpSession.securityPrivKeyLen) != SNMPERR_SUCCESS)
-                            {
-                                logger->error("SNMP: Error generating Ku from privacy key");
-                            }
+                                conf->privKey.length(), conf->snmpSession.securityPrivKey, &conf->snmpSession.securityPrivKeyLen) != SNMPERR_SUCCESS)
+                {
+                    logger->error("SNMP: Error generating Ku from privacy key");
+                }
             }
         }
         else
@@ -259,9 +271,15 @@ void setup_snmp_session(sensor_attribute_t *conf)
 bool snmp_init_sensors(void *runtime)
 {
 
-    //init_snmp("SNMPplugin");
+    // init_snmp("SNMPplugin");
 
     // Get the plugin config from runtime
+
+    // Connect to the server.
+    seanerbus::client::Connection conn("demobus://localhost:5398", "demobus://localhost:5398");
+
+    char hostname[HOST_NAME_MAX + 1];
+    gethostname(hostname, sizeof(hostname));
 
     for (const auto &[uuid, conf] : configs)
     {
@@ -277,17 +295,54 @@ bool snmp_init_sensors(void *runtime)
         // Add to the global sensors map using UUID as key
         ::sensors[uuid] = sensor;
         sensor_values[conf->uuid] = new SensorReading{0, 0.0};
+
+        auto addr = seanerbus::msg::Address{seanerbus::msg::Uuid{conf->uuid}};
+
+        // appending hostname to the name []
+        auto it = conf->nameserver_parts.find("hostname");
+        const bool has_hostname = it != conf->nameserver_parts.end() && !it->second.empty();
+
+        if (!has_hostname)
+        {
+            conf->nameserver_parts["hostname"] = hostname;
+        }
+
+        // generating name str
+        std::string nameserver_parts_str;
+        for (const auto &[k, v] : conf->nameserver_parts)
+        {
+            nameserver_parts_str += k + "=" + v + ",";
+        }
+        nameserver_parts_str.pop_back();
+        logger->info("Registering sensor {{}}: {}", nameserver_parts_str, conf->uuid);
+
+        seanerbus::resolve::register_resolve(conn, conf->nameserver_parts, addr,
+                                             [](seanerbus::client::Connection &conn,
+                                                seanerbus::Expected<void, seanerbus::Error> res)
+                                             {
+                                                 if (!res.ok())
+                                                 {
+                                                     conn.shutdown();
+                                                     return;
+                                                 }
+                                                 conn.shutdown();
+                                             });
     }
 
+    seanerbus::client::SimpleEventLoop sl(conn);
+    sl.run();
+
+    conn.shutdown();
     return true; // We're using the global map, not returning a pointer to sensors
 }
 
-bool snmp_initlib (void *runtime){
+bool snmp_initlib(void *runtime)
+{
     init_snmp("SNMPplugin");
     return true;
 }
 
-bool snmp_plugin_finit(void *runtime)
+bool snmp_finit(void *runtime)
 {
 
     // Clear the map

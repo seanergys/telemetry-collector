@@ -17,8 +17,8 @@
 void *snmp_create(void);
 bool snmp_destroy(void *runtime);
 bool snmp_init_sensors(void *runtime);
-bool snmp_initlib (void *runtime);
-bool snmp_finit (void *runtime);
+bool snmp_initlib(void *runtime);
+bool snmp_finit(void *runtime);
 
 void *snmp_run(void *runtime);
 
@@ -36,6 +36,7 @@ typedef struct sensor_attribute
     char *filter;
     double factor = 1;
     double offset = 0;
+    std::map<std::string, std::string> nameserver_parts;
     char *connection;
     char *type;
     std::string snmpCommunity;

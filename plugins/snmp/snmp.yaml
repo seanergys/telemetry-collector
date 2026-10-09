@@ -23,43 +23,61 @@ sensor_groups:
         topic: power1
         description: "OIDsuffix  .1"
         oid_suffix: .1
+        nameserver_parts:
+          metric: sensor1
 
       - uuid: 42c3d210-a49f-4422-8fe8-26ca480d0e1f
         topic: power2
         description: "OIDsuffix  .2"
         oid_suffix: .2
+        nameserver_parts:
+          metric: sensor2
 
       - uuid: 43c3d210-a49f-4422-8fe8-26ca480d0e1f
         topic: power3
         description: "OIDsuffix  .3"
         oid_suffix: .3
+        nameserver_parts:
+          metric: sensor3
       
       - uuid: 44c3d210-a49f-4422-8fe8-26ca480d0e1f
         topic: power4
         description: "OIDsuffix  .4"
         oid_suffix: .4
+        nameserver_parts:
+          metric: sensor4
 
       - uuid: 45c3d210-a49f-4422-8fe8-26ca480d0e1f
         topic: power5
         description: "OIDsuffix  .5"
         oid_suffix: .5
+        nameserver_parts:
+          metric: sensor5
 
       - uuid: 46c3d210-a49f-4422-8fe8-26ca480d0e1f
         topic: power6
         description: "OIDsuffix  .6"
         oid_suffix: .6
+        nameserver_parts:
+          metric: sensor6
 
       - uuid: 47c3d210-a49f-4422-8fe8-26ca480d0e1f
         topic: power7
         description: "OIDsuffix  .7"
         oid_suffix: .7
+        nameserver_parts:
+          metric: sensor7
 
       - uuid: 48c3d210-a49f-4422-8fe8-26ca480d0e1f
         topic: power8
         description: "OIDsuffix  .8"
         oid_suffix: .8
+        nameserver_parts:
+          metric: sensor8
 
       - uuid: 49c3d210-a49f-4422-8fe8-26ca480d0e1f
         topic: power9
         description: "OIDsuffix  .9"
         oid_suffix: .9
+        nameserver_parts:
+          metric: sensor9
