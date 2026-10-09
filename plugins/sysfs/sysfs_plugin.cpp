@@ -94,15 +94,17 @@ void applyFields(const YAML::Node &node, sensor_attribute_t *conf)
     if (node["offset"])
         conf->offset = node["offset"].as<double>();
 
-    if (node["name_part"])
+    if (node["nameserver_parts"])
     {
-	for (const auto & p : node["name_part"]) {
-    	    std::string k = p.first.as<std::string>();;
-    	    std::string v =p.second.as<std::string>();;
-            conf->name[k] = v;
-	}
+        for (const auto &p : node["nameserver_parts"])
+        {
+            std::string k = p.first.as<std::string>();
+            ;
+            std::string v = p.second.as<std::string>();
+            ;
+            conf->nameserver_parts[k] = v;
+        }
     }
-
 }
 
 bool applyTemplateConfigs(const YAML::Node &node, const YAML::Node &templates, sensor_attribute_t *conf)
@@ -149,25 +151,36 @@ bool sysfs_init_sensors(void *runtime)
 
         auto addr = seanerbus::msg::Address{seanerbus::msg::Uuid{conf->uuid}};
 
-        conf->name["node"] = std::string(hostname);
+        // appending hostname to the name []
+        auto it = conf->nameserver_parts.find("hostname");
+        const bool has_hostname = it != conf->nameserver_parts.end() && !it->second.empty();
 
-        std::string name_str;
-        for (const auto &[k, v] : conf->name)
+        if (!has_hostname)
         {
-            name_str += k + "=" + v + ",";
+            char hostname[HOST_NAME_MAX + 1];
+            gethostname(hostname, sizeof(hostname) - 1);
+            conf->nameserver_parts["hostname"] = hostname;
         }
-        name_str.pop_back();
-        logger->info("Registering sensor {{}}: {}", name_str, conf->uuid);
 
-        seanerbus::resolve::register_resolve(conn, conf->name, addr,
+        // generating name str
+        std::string nameserver_parts_str;
+        for (const auto &[k, v] : conf->nameserver_parts)
+        {
+            nameserver_parts_str += k + "=" + v + ",";
+        }
+        nameserver_parts_str.pop_back();
+        logger->info("Registering sensor {{}}: {}", nameserver_parts_str, conf->uuid);
+
+        seanerbus::resolve::register_resolve(conn, conf->nameserver_parts, addr,
                                              [](seanerbus::client::Connection &conn,
                                                 seanerbus::Expected<void, seanerbus::Error> res)
                                              {
                                                  if (!res.ok())
                                                  {
                                                      conn.shutdown();
-                                                     return true;
+                                                     return;
                                                  }
+                                                 conn.shutdown();
                                              });
     }
 
@@ -177,7 +190,6 @@ bool sysfs_init_sensors(void *runtime)
     conn.shutdown();
     return true; // We're using the global map, not returning a pointer to sensors
 }
-
 
 bool sysfs_finit(void *runtime)
 {
