@@ -16,12 +16,8 @@
 
 #include "ad_plugin.hpp"
 
-//#include <seanerbus/msg/hello_world_req_v1.hpp>
-//#include <seanerbus/msg/hello_world_res_v1.hpp>
-
 #include "seanerbus/client/simple_event_loop.hpp"
 #include <seanerbus/client/connection.hpp>
-#include <seanerbus/msg/message.hpp>
 #include <seanerbus/helpers/resolve.hpp>
 
 static std::map<std::string, SensorReading *> sensor_values = {};
@@ -37,7 +33,7 @@ plugin_interface_t plugin =
         ad_init_sensors,
         nullptr, // init_actors
         ad_finit,
-	nullptr,
+        nullptr,
         nullptr,
         ad_run,          // run function
         nullptr,         // req
@@ -94,6 +90,18 @@ void applyFields(const YAML::Node &node, sensor_attribute_t *conf)
         conf->factor = node["factor"].as<double>();
     if (node["offset"])
         conf->offset = node["offset"].as<double>();
+
+    if (node["nameserver_parts"])
+    {
+        for (const auto &p : node["nameserver_parts"])
+        {
+            std::string k = p.first.as<std::string>();
+            ;
+            std::string v = p.second.as<std::string>();
+            ;
+            conf->nameserver_parts[k] = v;
+        }
+    }
 }
 
 bool applyTemplateConfigs(const YAML::Node &node, const YAML::Node &templates, sensor_attribute_t *conf)
@@ -118,6 +126,12 @@ bool applyTemplateConfigs(const YAML::Node &node, const YAML::Node &templates, s
 
 bool ad_init_sensors(void *runtime)
 {
+    // Connect to the server.
+    seanerbus::client::Connection conn("demobus://localhost:5398", "demobus://localhost:5398");
+
+    char hostname[HOST_NAME_MAX + 1];
+    gethostname(hostname, sizeof(hostname));
+
     for (const auto &[uuid, conf] : configs)
     {
         sensor_t *sensor = new sensor_t();
@@ -129,8 +143,43 @@ bool ad_init_sensors(void *runtime)
         // Add to the global sensors map using UUID as key
         ::sensors[uuid] = sensor;
         sensor_values[conf->uuid] = new SensorReading{0, 0.0};
-    }
 
+        auto addr = seanerbus::msg::Address{seanerbus::msg::Uuid{conf->uuid}};
+
+        // appending hostname to the name []
+        auto it = conf->nameserver_parts.find("hostname");
+        const bool has_hostname = it != conf->nameserver_parts.end() && !it->second.empty();
+
+        if (!has_hostname)
+        {
+            conf->nameserver_parts["hostname"] = hostname;
+        }
+
+        // generating name str
+        std::string nameserver_parts_str;
+        for (const auto &[k, v] : conf->nameserver_parts)
+        {
+            nameserver_parts_str += k + "=" + v + ",";
+        }
+        nameserver_parts_str.pop_back();
+        logger->info("Registering sensor {{}}: {}", nameserver_parts_str, conf->uuid);
+
+        seanerbus::resolve::register_resolve(conn, conf->nameserver_parts, addr,
+                                             [](seanerbus::client::Connection &conn,
+                                                seanerbus::Expected<void, seanerbus::Error> res)
+                                             {
+                                                 if (!res.ok())
+                                                 {
+                                                     conn.shutdown();
+                                                     return;
+                                                 }
+                                                 conn.shutdown();
+                                             });
+    }
+    seanerbus::client::SimpleEventLoop sl(conn);
+    sl.run();
+
+    conn.shutdown();
     return true; // We're using the global map, not returning a pointer to sensors
 }
 
@@ -191,8 +240,7 @@ double _applyFactorOffset(double value, double factor, double offset)
     return (value * factor) + offset;
 }
 
-
-void req_handler(seanerbus::client::Connection& conn, seanerbus::Expected<seanerbus::msg::Message, seanerbus::Error> res)
+void req_handler(seanerbus::client::Connection &conn, seanerbus::Expected<seanerbus::msg::Message, seanerbus::Error> res)
 {
 
     if (!res.ok())
@@ -226,7 +274,6 @@ void req_handler(seanerbus::client::Connection& conn, seanerbus::Expected<seaner
 
     conn.shutdown();
 }
-
 
 void getPayload(sensor_attribute_t *conf, SensorReading *tv)
 {
@@ -326,7 +373,6 @@ void read_publish_schedule_next(seanerbus::client::Connection &conn,
                  });
 }
 
-
 void *ad_run(void *runtime)
 {
 
@@ -384,71 +430,72 @@ void *ad_configurator(void *configPtr)
         std::string groupName = groupEntry.first.as<std::string>();
         const YAML::Node &group = groupEntry.second;
 
-	// this is not needed, since we get the list through interaction with the naming service
+        // this is not needed, since we get the list through interaction with the naming service
         // sensor list check
-	/*
-        if (!group["sensors"])
-        {
-            logger->error("Group '{}' missing sensors list", groupName);
-            continue;
-        }
-	*/
+        /*
+            if (!group["sensors"])
+            {
+                logger->error("Group '{}' missing sensors list", groupName);
+                continue;
+            }
+        */
 
-	if (!group["names"])
+        if (!group["names"])
         {
             logger->error("Group '{}' missing name key value list", groupName);
             continue;
         }
 
-
-	std::map<std::string, std::string> name;
+        std::map<std::string, std::string> name;
         for (const auto &item : group["names"])
         {
-	   // todo: parse the name from group["names"]
-	   name[item.first.as<std::string>()] = item.second.as<std::string>();
-	}
+            // todo: parse the name from group["names"]
+            name[item.first.as<std::string>()] = item.second.as<std::string>();
+        }
 
-	for (const auto &item : name){
+        for (const auto &item : name)
+        {
 
-	    logger->debug("Name mapping: {} = {}", item.first, item.second);
-	}
+            logger->debug("Name mapping: {} = {}", item.first, item.second);
+        }
         seanerbus::client::Connection conn("demobus://localhost:5398", "demobus://localhost:5398");
 
-	std::vector<seanerbus::msg::Address> addrs;
-	seanerbus::resolve::resolve(
-	    conn,
-    	    name,
-    	    [&addrs](auto& conn, auto res)
-    	    {
+        std::vector<seanerbus::msg::Address> addrs;
+        seanerbus::resolve::resolve(
+            conn,
+            name,
+            [&addrs](auto &conn, auto res)
+            {
                 if (!res.ok())
                 {
-	            logger->error("Resolve not ok: {}", res.unwrap_error().what());
+                    logger->error("Resolve not ok: {}", res.unwrap_error().what());
                     conn.shutdown();
-            	    return;
-        	}
-		auto addrs_received = res.unwrap_ok();
+                    return;
+                }
+                auto addrs_received = res.unwrap_ok();
 
-		for (const auto &item : addrs_received){
-			addrs.push_back(item);
-			logger->debug("Resolved address: {}", item.as_string());
-		}
-		conn.shutdown();
-    	    }
-	);
-	seanerbus::client::SimpleEventLoop sel(conn);
-	sel.run();
+                for (const auto &item : addrs_received)
+                {
+                    addrs.push_back(item);
+                    logger->debug("Resolved address: {}", item.as_string());
+                }
+                conn.shutdown();
+            });
+        seanerbus::client::SimpleEventLoop sel(conn);
+        sel.run();
 
-        for (const auto &item : addrs){
+        for (const auto &item : addrs)
+        {
 
-	    // todo create a sensor object
-	    // todo maybe reverse query the naming service to look up the fields and possibly set them if needed
+            // todo create a sensor object
+            // todo maybe reverse query the naming service to look up the fields and possibly set them if needed
 
             // Create a sensor_attribute_t for this sensor
             sensor_attribute_t *conf = new sensor_attribute_t();
 
-	    conf->uuid = strdup(item.as_string().c_str());
+            conf->uuid = strdup(item.as_string().c_str());
 
-	    logger->info("Creating sensor with UUID: {}", conf->uuid);
+            logger->info("Creating sensor with UUID: {}", conf->uuid);
             // apply group-level template attr
             if (templates)
             {
@@ -459,15 +506,15 @@ void *ad_configurator(void *configPtr)
             applyFields(group, conf);
 
             // apply sensor-level config attr
-	    // todo: maybe? we may be able to get reverse resolve the names and set the fields?
-            //applyFields(item, conf);
+            // todo: maybe? we may be able to get reverse resolve the names and set the fields?
+            // applyFields(item, conf);
 
             // Add to the global sensors map using UUID as key
             ::configs[conf->uuid] = conf;
         }
     }
     logger->info("Total sensors configured: {}", ::configs.size());
-    assert (::configs.size()!=0);
+    assert(::configs.size() != 0);
 
     return yaml;
 }
