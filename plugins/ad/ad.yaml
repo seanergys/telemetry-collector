@@ -6,6 +6,10 @@ sensor_templates:
     interval_ms: 5000
     factor: 0.001
     unit: MHz
+    # nameserver_parts
+    #   hostname: abc
+    #   rack: 1
+
 
 sensor_groups:
   ad:
@@ -13,6 +17,6 @@ sensor_groups:
     topic: freq #  group level    
     uuid: 3bc3d210-a49f-4422-8fe8-26ca480d0e1f # batching -> true
     template: temp
-    names:
+    nameserver_parts:
       metric: temperature
     interval_ms: 5000

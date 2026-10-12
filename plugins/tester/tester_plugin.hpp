@@ -33,7 +33,7 @@ typedef struct sensor_attribute
     char *filter;
     double factor = 1;
     double offset = 0;
-    std::map<std::string, std::string> name;
+    std::map<std::string, std::string> nameserver_parts;
 } sensor_attribute_t;
 
 struct SensorReading

@@ -10,3 +10,6 @@ telemetry-collector
 !sysfs.yaml
 net-snmp*
 build
+capnp-0.8
+*.err
+*.out

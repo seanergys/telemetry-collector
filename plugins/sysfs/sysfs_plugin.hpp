@@ -29,12 +29,13 @@ typedef struct sensor_attribute
     char *topic;
     std::chrono::milliseconds interval_ms;
     char *description;
+    char *hostname;
     char *unit;
     char *path;
     char *filter;
     double factor = 1;
     double offset = 0;
-    std::map<std::string, std::string> name;
+    std::map<std::string, std::string> nameserver_parts;
 } sensor_attribute_t;
 
 struct SensorReading

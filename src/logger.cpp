@@ -13,55 +13,58 @@ std::shared_ptr<spdlog::details::thread_pool>
     Logger::thread_pool =
         std::make_shared<spdlog::details::thread_pool>(8192, 1);
 
-namespace {
+namespace
+{
 
-/*
- * Wrapper around another sink that forwards messages only when
- * the message level is between MinLevel and MaxLevel, inclusive.
- *
- * Example:
- *
- *   trace .. info      -> stdout / .out
- *   warn  .. critical  -> stderr / .err
- */
-template <
-    spdlog::level::level_enum MinLevel,
-    spdlog::level::level_enum MaxLevel>
-class LevelRangeSink final : public spdlog::sinks::sink {
-public:
-    explicit LevelRangeSink(spdlog::sink_ptr sink)
-        : sink_(std::move(sink))
+    /*
+     * Wrapper around another sink that forwards messages only when
+     * the message level is between MinLevel and MaxLevel, inclusive.
+     *
+     * Example:
+     *
+     *   trace .. info      -> stdout / .out
+     *   warn  .. critical  -> stderr / .err
+     */
+    template <
+        spdlog::level::level_enum MinLevel,
+        spdlog::level::level_enum MaxLevel>
+    class LevelRangeSink final : public spdlog::sinks::sink
     {
-    }
+    public:
+        explicit LevelRangeSink(spdlog::sink_ptr sink)
+            : sink_(std::move(sink))
+        {
+        }
 
-    void log(const spdlog::details::log_msg& msg) override
-    {
-        if (msg.level >= MinLevel && msg.level <= MaxLevel) {
-            sink_->log(msg);        }
-    }
+        void log(const spdlog::details::log_msg &msg) override
+        {
+            if (msg.level >= MinLevel && msg.level <= MaxLevel)
+            {
+                sink_->log(msg);
+            }
+        }
 
-    void flush() override
-    {
-        sink_->flush();
-    }
+        void flush() override
+        {
+            sink_->flush();
+        }
 
-    void set_pattern(const std::string& pattern) override
-    {
-        sink_->set_pattern(pattern);
-    }
+        void set_pattern(const std::string &pattern) override
+        {
+            sink_->set_pattern(pattern);
+        }
 
-    void set_formatter(
-        std::unique_ptr<spdlog::formatter> sink_formatter) override
-    {
-        sink_->set_formatter(std::move(sink_formatter));
-    }
+        void set_formatter(
+            std::unique_ptr<spdlog::formatter> sink_formatter) override
+        {
+            sink_->set_formatter(std::move(sink_formatter));
+        }
 
-private:
-    spdlog::sink_ptr sink_;
-};
+    private:
+        spdlog::sink_ptr sink_;
+    };
 
 } // namespace
-
 
 Logger::Logger()
 {
@@ -77,7 +80,7 @@ Logger::Logger()
      * There should be only one owner responsible for calling
      * init_thread_pool().
      */
-     //thread_pool = std::make_shared<spdlog::details::thread_pool>(8192, 1);
+    // thread_pool = std::make_shared<spdlog::details::thread_pool>(8192, 1);
 
     /*
      * Actual output sinks.
@@ -101,30 +104,31 @@ Logger::Logger()
     stdout_sink->set_color(
         spdlog::level::info,
         stdout_sink->green);
-    
+
     stderr_sink->set_color(
         spdlog::level::warn,
         stderr_sink->yellow_bold);
-    
+
     stderr_sink->set_color(
         spdlog::level::err,
         stderr_sink->red_bold);
-    
+
     stderr_sink->set_color(
         spdlog::level::critical,
         stderr_sink->bold_on_red);
-    
 
-    auto out_file_sink =
-        std::make_shared<spdlog::sinks::basic_file_sink_mt>(
-            "/var/log/cmi/telemetry-collector.out",
-            true);  // append
-
-    auto err_file_sink =
-        std::make_shared<spdlog::sinks::basic_file_sink_mt>(
-            "/var/log/cmi/telemetry-collector.err",
-            true);  // append
-
+    std::shared_ptr<spdlog::sinks::sink> err_file_sink, out_file_sink;
+    try
+    {
+        // may be some flag later on ...
+        err_file_sink = std::make_shared<spdlog::sinks::basic_file_sink_mt>("/var/log/cmi/telemetry-collector.err", true);
+        out_file_sink = std::make_shared<spdlog::sinks::basic_file_sink_mt>("/var/log/cmi/telemetry-collector.out", true);
+    }
+    catch (const spdlog::spdlog_ex &)
+    {
+        err_file_sink = std::make_shared<spdlog::sinks::basic_file_sink_mt>("./telemetry-collector.err", true);
+        out_file_sink = std::make_shared<spdlog::sinks::basic_file_sink_mt>("./telemetry-collector.out", true);
+    }
 
     /*
      * OUT:
@@ -137,7 +141,6 @@ Logger::Logger()
         spdlog::level::trace,
         spdlog::level::info>;
 
-
     /*
      * ERR:
      *
@@ -149,23 +152,17 @@ Logger::Logger()
         spdlog::level::warn,
         spdlog::level::critical>;
 
+    sinks_.push_back(
+        std::make_shared<OutSink>(stdout_sink));
 
     sinks_.push_back(
-        std::make_shared<OutSink>(stdout_sink)
-    );
+        std::make_shared<OutSink>(out_file_sink));
 
     sinks_.push_back(
-        std::make_shared<OutSink>(out_file_sink)
-    );
+        std::make_shared<ErrSink>(stderr_sink));
 
     sinks_.push_back(
-        std::make_shared<ErrSink>(stderr_sink)
-    );
-
-    sinks_.push_back(
-        std::make_shared<ErrSink>(err_file_sink)
-    );
-
+        std::make_shared<ErrSink>(err_file_sink));
 
     /*
      * Same format everywhere.
@@ -189,13 +186,13 @@ Logger::Logger()
     const std::string pattern =
         "%Y-%m-%d %H:%M:%S.%e [%n] [%t] [%l] %v";
 
-    for (auto& sink : sinks_) {
+    for (auto &sink : sinks_)
+    {
         sink->set_pattern(pattern);
     }
 }
 
-
-Logger::LoggerPtr Logger::create(const std::string& name)
+Logger::LoggerPtr Logger::create(const std::string &name)
 {
     /*
      * Every logger uses:
@@ -220,9 +217,7 @@ Logger::LoggerPtr Logger::create(const std::string& name)
          * If logging cannot keep up, old log messages can be
          * discarded rather than blocking telemetry collection.
          */
-        spdlog::async_overflow_policy::overrun_oldest
-    );
-
+        spdlog::async_overflow_policy::overrun_oldest);
 
     /*
      * Permit every level.
@@ -230,7 +225,6 @@ Logger::LoggerPtr Logger::create(const std::string& name)
      * Individual sink filters decide where each level goes.
      */
     logger->set_level(spdlog::level::trace);
-
 
     /*
      * Don't flush after every message.
@@ -242,10 +236,10 @@ Logger::LoggerPtr Logger::create(const std::string& name)
     return logger;
 }
 
-
 void Logger::flush()
 {
-    for (auto& sink : sinks_) {
+    for (auto &sink : sinks_)
+    {
         sink->flush();
     }
 }
