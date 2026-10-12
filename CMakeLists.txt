@@ -220,9 +220,8 @@ foreach(plugin IN LISTS SELECTED_PLUGINS)
         PRIVATE BEFORE
             "${CMAKE_CURRENT_SOURCE_DIR}/include"
             "${CMAKE_CURRENT_SOURCE_DIR}/plugins/${plugin}"
+            "${UUID_INCLUDEDIR}"
     )
-    target_include_directories( "${plugin}" PRIVATE ${UUID_INCLUDEDIR})
-
 
     plugin_get_dependencies(
         "${plugin}"
