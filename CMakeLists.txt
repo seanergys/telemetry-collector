@@ -108,12 +108,28 @@ if(NOT CAPNP_ROOT)
 
 endif()
 
+set(
+    UUID_ROOT
+    ""
+    CACHE PATH
+    "Root installation path of uuid"
+)
+
+if(NOT UUID_ROOT)
+
+    message(FATAL_ERROR
+        "UUID_ROOT must be specified, "
+        "e.g. -DUUID_ROOT=/path/install"
+    )
+
+endif()
+
 find_package(
     PkgConfig
     REQUIRED
 )
 
-list(APPEND CMAKE_PREFIX_PATH "${SEANERBUS_ROOT}" "${CAPNP_ROOT}")
+list(APPEND CMAKE_PREFIX_PATH "${SEANERBUS_ROOT}" "${CAPNP_ROOT}" "${UUID_ROOT}")
 
 message(
     STATUS
@@ -135,6 +151,7 @@ pkg_check_modules(
 )
 
 
+pkg_check_modules(UUID REQUIRED IMPORTED_TARGET uuid)
 # ============================================================================
 # Plugins
 # ============================================================================
@@ -176,6 +193,7 @@ set_target_properties(
     PROPERTIES
         BUILD_RPATH "${SEANERBUS_LIBRARY_DIRS}"
 )
+target_link_libraries(telemetry_collector PRIVATE PkgConfig::UUID)
 
 # ============================================================================
 # Plugins
@@ -202,6 +220,7 @@ foreach(plugin IN LISTS SELECTED_PLUGINS)
         PRIVATE BEFORE
             "${CMAKE_CURRENT_SOURCE_DIR}/include"
             "${CMAKE_CURRENT_SOURCE_DIR}/plugins/${plugin}"
+            "${UUID_INCLUDEDIR}"
     )
 
     plugin_get_dependencies(

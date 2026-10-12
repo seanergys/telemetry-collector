@@ -18,6 +18,8 @@
 #include "seanerbus/client/simple_event_loop.hpp"
 #include <seanerbus/helpers/resolve.hpp>
 
+#include <uuid/uuid.h>
+
 static std::map<std::string, SensorReading *> sensor_values;
 static Logger logging;
 static std::shared_ptr<spdlog::logger> logger;
@@ -88,7 +90,25 @@ void applyFields(const YAML::Node &node, sensor_attribute_t *conf)
         return;
 
     if (node["uuid"])
-        setCharField(conf->uuid, node["uuid"].as<std::string>());
+    {
+
+        if (node["uuid"].IsScalar() && !node["uuid"].as<std::string>().empty())
+        {
+            setCharField(conf->uuid, node["uuid"].as<std::string>());
+        }
+        else
+        {
+            uuid_t id;
+            uuid_generate_random(id); // V4
+
+            char buf[37];
+            uuid_unparse_lower(id, buf);
+            std::string uuid(buf);
+
+            setCharField(conf->uuid, uuid);
+        }
+    }
+
     if (node["topic"])
         setCharField(conf->topic, node["topic"].as<std::string>());
     if (node["interval_ms"])
