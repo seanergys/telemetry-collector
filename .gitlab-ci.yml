@@ -2,6 +2,9 @@ variables:
   SEANERBUS_COMMIT:
     value: "3075f14aa9b75ac8020d8a4c0dd09f7dae3c251d"
     description: "seanerbus main commit"
+  SCHEMA_COMMIT:
+    value: "4bfb120b8c9c55c60abd326fe9b759e5d33cc939"
+    description: "Cap'n Proto message definition commit"
   TC_PLUGINS:
     value: "tester;sysfs;mock"
     description: "tc plugins to test"
@@ -24,7 +27,7 @@ pkgdeps:
     - cd seanerbus-cpp
     - if [ -n "$SEANERBUS_COMMIT" ]; then git checkout $SEANERBUS_COMMIT; fi
     - git clone https://software_token:$software_token@gitlab.seanergys.fz-juelich.de/software/seanerbus-msg.git schemas
-    - cd schemas && git checkout 9f9c214 && cd ..
+    - if [ -n "$SCHEMA_COMMIT" ]; then cd schemas && git checkout $SCHEMA_COMMIT && cd ..; fi
     - git clone --branch 12.2.0 --depth 1 https://github.com/fmtlib/fmt.git lib/fmt
     - mkdir build
     - cd build
