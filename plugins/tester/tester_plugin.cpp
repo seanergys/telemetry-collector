@@ -159,7 +159,7 @@ bool tester_init_sensors(void *runtime)
         ::sensors[uuid] = sensor;
         sensor_values[conf->uuid] = new SensorReading{0, 0.0};
 
-        auto addr = seanerbus::msg::Address{seanerbus::msg::Uuid{conf->uuid}};
+        auto entity = seanerbus::msg::Entity{seanerbus::msg::Uuid{conf->uuid}};
 
         // appending hostname to the name []
         auto it = conf->nameserver_parts.find("hostname");
@@ -178,7 +178,7 @@ bool tester_init_sensors(void *runtime)
         nameserver_parts_str.pop_back();
         logger->info("Registering sensor {{}}: {}", nameserver_parts_str, conf->uuid);
 
-        seanerbus::resolve::register_resolve(conn, conf->nameserver_parts, addr,
+        seanerbus::resolve::register_resolve(conn, conf->nameserver_parts, entity,
                                              [](seanerbus::client::Connection &conn,
                                                 seanerbus::Expected<void, seanerbus::Error> res)
                                              {
@@ -310,13 +310,13 @@ void read_publish_schedule_next(seanerbus::client::Connection &conn,
     msg_builder.builder().setTime(tv->time);
     msg_builder.builder().setValue(tv->value);
 
-    seanerbus::msg::Address addr =
-        seanerbus::msg::Address{seanerbus::msg::Uuid{s.sensor->conf->uuid}};
+    seanerbus::msg::Entity entity =
+        seanerbus::msg::Entity{seanerbus::msg::Uuid{s.sensor->conf->uuid}};
 
     s.next_run += s.sensor->conf->interval_ms;
     queue.push(s);
 
-    conn.publish(msg_builder.to_message(addr),
+    conn.publish(msg_builder.to_message(entity),
                  [&conn, &queue](seanerbus::client::Connection &c,
                                  seanerbus::Expected<void, seanerbus::Error> e)
                  {

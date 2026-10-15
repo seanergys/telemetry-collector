@@ -164,7 +164,7 @@ bool ad_init_sensors(void *runtime)
         ::sensors[uuid] = sensor;
         sensor_values[conf->uuid] = new SensorReading{0, 0.0};
 
-        auto addr = seanerbus::msg::Address{seanerbus::msg::Uuid{conf->uuid}};
+        auto entity = seanerbus::msg::Entity{seanerbus::msg::Uuid{conf->uuid}};
 
         // appending hostname to the name []
         auto it = conf->nameserver_parts.find("hostname");
@@ -184,7 +184,7 @@ bool ad_init_sensors(void *runtime)
         nameserver_parts_str.pop_back();
         logger->info("Registering sensor {{}}: {}", nameserver_parts_str, conf->uuid);
 
-        seanerbus::resolve::register_resolve(conn, conf->nameserver_parts, addr,
+        seanerbus::resolve::register_resolve(conn, conf->nameserver_parts, entity,
                                              [](seanerbus::client::Connection &conn,
                                                 seanerbus::Expected<void, seanerbus::Error> res)
                                              {
@@ -299,7 +299,7 @@ void getPayload(sensor_attribute_t *conf, SensorReading *tv)
 {
     // todo: replace
 
-    auto addr = seanerbus::msg::Address{seanerbus::msg::Uuid{conf->connection_uuid}};
+    auto entity = seanerbus::msg::Entity{seanerbus::msg::Uuid{conf->connection_uuid}};
     // Connect to the server.
     seanerbus::client::Connection conn("demobus://localhost:5398", "demobus://localhost:5398");
 
@@ -307,7 +307,7 @@ void getPayload(sensor_attribute_t *conf, SensorReading *tv)
 
     bd.builder().setMsg("Hello World");
 
-    conn.request(bd.to_message(addr), req_handler);
+    conn.request(bd.to_message(entity), req_handler);
 
     seanerbus::client::SimpleEventLoop sel(conn);
 
@@ -379,13 +379,13 @@ void read_publish_schedule_next(seanerbus::client::Connection &conn,
     msg_builder.builder().setTime(tv->time);
     msg_builder.builder().setValue(tv->value);
 
-    seanerbus::msg::Address addr =
-        seanerbus::msg::Address{seanerbus::msg::Uuid{s.sensor->conf->uuid}};
+    seanerbus::msg::Entity entity =
+        seanerbus::msg::Entity{seanerbus::msg::Uuid{s.sensor->conf->uuid}};
 
     s.next_run += s.sensor->conf->interval_ms;
     queue.push(s);
 
-    conn.publish(msg_builder.to_message(addr),
+    conn.publish(msg_builder.to_message(entity),
                  [&conn, &queue](seanerbus::client::Connection &c,
                                  seanerbus::Expected<void, seanerbus::Error> e)
                  {
@@ -480,11 +480,11 @@ void *ad_configurator(void *configPtr)
         }
         seanerbus::client::Connection conn("demobus://localhost:5398", "demobus://localhost:5398");
 
-        std::vector<seanerbus::msg::Address> addrs;
+        std::vector<seanerbus::msg::Entity> entities;
         seanerbus::resolve::resolve(
             conn,
             name,
-            [&addrs](auto &conn, auto res)
+            [&entities](auto &conn, auto res)
             {
                 if (!res.ok())
                 {
@@ -492,19 +492,17 @@ void *ad_configurator(void *configPtr)
                     conn.shutdown();
                     return;
                 }
-                auto addrs_received = res.unwrap_ok();
-
-                for (const auto &item : addrs_received)
+                entities = res.unwrap_ok().entities();
+                for (const auto &item : entities)
                 {
-                    addrs.push_back(item);
-                    logger->debug("Resolved address: {}", item.as_string());
+                    logger->debug("Resolved entity: {}", item.as_string());
                 }
                 conn.shutdown();
             });
         seanerbus::client::SimpleEventLoop sel(conn);
         sel.run();
 
-        for (const auto &item : addrs)
+        for (const auto &item : entities)
         {
 
             // todo create a sensor object

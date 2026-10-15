@@ -1,6 +1,6 @@
 variables:
   SEANERBUS_COMMIT:
-    value: "1b20571854fe45c13bdef687e26f04cd4d272bb2"
+    value: "3075f14aa9b75ac8020d8a4c0dd09f7dae3c251d"
     description: "seanerbus main commit"
   TC_PLUGINS:
     value: "tester;sysfs;mock"
