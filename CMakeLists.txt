@@ -83,15 +83,6 @@ set(
     "Root installation path of seanerbus"
 )
 
-if(NOT SEANERBUS_ROOT)
-
-    message(FATAL_ERROR
-        "SEANERBUS_ROOT must be specified, "
-        "e.g. -DSEANERBUS_ROOT=/path/to/seanerbus/install"
-    )
-
-endif()
-
 set(
     CAPNP_ROOT
     ""
@@ -99,30 +90,12 @@ set(
     "Root installation path of capnp"
 )
 
-if(NOT CAPNP_ROOT)
-
-    message(FATAL_ERROR
-        "CAPNP_ROOT must be specified, "
-        "e.g. -DCAPNP_ROOT=/path/to/capnp/install"
-    )
-
-endif()
-
 set(
     UUID_ROOT
     ""
     CACHE PATH
     "Root installation path of uuid"
 )
-
-if(NOT UUID_ROOT)
-
-    message(FATAL_ERROR
-        "UUID_ROOT must be specified, "
-        "e.g. -DUUID_ROOT=/path/install"
-    )
-
-endif()
 
 find_package(
     PkgConfig
