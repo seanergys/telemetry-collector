@@ -156,8 +156,8 @@ target_link_libraries(
     telemetry_collector
     PRIVATE
         PkgConfig::SEANERBUS
-        yaml-cpp::yaml-cpp
-	spdlog::spdlog
+        yaml-cpp
+	    spdlog::spdlog
         ${CMAKE_DL_LIBS}
 )
 
@@ -166,6 +166,9 @@ set_target_properties(
     PROPERTIES
         BUILD_RPATH "${SEANERBUS_LIBRARY_DIRS}"
 )
+
+target_compile_definitions(telemetry_collector PUBLIC SPDLOG_FMT_EXTERNAL)
+
 target_link_libraries(telemetry_collector PRIVATE PkgConfig::UUID)
 
 # ============================================================================
@@ -188,6 +191,8 @@ foreach(plugin IN LISTS SELECTED_PLUGINS)
             PREFIX ""
     )
 
+    target_compile_definitions("${plugin}" PUBLIC SPDLOG_FMT_EXTERNAL)
+    
     target_include_directories(
         "${plugin}"
         PRIVATE BEFORE
@@ -204,18 +209,17 @@ foreach(plugin IN LISTS SELECTED_PLUGINS)
     target_link_libraries(
         "${plugin}"
         PRIVATE
+	        yaml-cpp
             spdlog::spdlog
             PkgConfig::SEANERBUS
     )
 
     foreach(dep IN LISTS plugin_dependencies)
-
         target_link_libraries(
             "${plugin}"
             PRIVATE
                 "${dep}::${dep}"
         )
-
     endforeach()
 
 endforeach()
