@@ -125,6 +125,8 @@ pkg_check_modules(
 
 
 pkg_check_modules(UUID REQUIRED IMPORTED_TARGET uuid)
+
+
 # ============================================================================
 # Plugins
 # ============================================================================
@@ -151,6 +153,13 @@ resolve_dependencies(
 # ============================================================================
 # Main target dependencies
 # ============================================================================
+
+get_cmake_property(_variableNames VARIABLES)
+list (SORT _variableNames)
+foreach (_variableName ${_variableNames})
+    message(STATUS "${_variableName}=${${_variableName}}")
+endforeach()
+
 
 target_link_libraries(
     telemetry_collector
