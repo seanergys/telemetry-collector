@@ -13,10 +13,10 @@ sensor_templates:
 
 sensor_groups:
   ad:
-    connection_uuid: a366335b-52f0-4658-a42b-7e73e83ec91f
+    # connection_uuid: a366335b-52f0-4658-a42b-7e73e83ec91f
     topic: freq #  group level    
-    uuid: 3bc3d210-a49f-4422-8fe8-26ca480d0e1f # batching -> true
+    # uuid: 3bc3d210-a49f-4422-8fe8-26ca480d0e1f # batching -> true
     template: temp
     nameserver_parts:
-      metric: temperature
+      hostname: seanergys-lxp-cpu01
     interval_ms: 5000

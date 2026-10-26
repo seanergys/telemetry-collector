@@ -102,8 +102,6 @@ void applyFields(const YAML::Node &node, sensor_attribute_t *conf)
         setCharField(conf->description, node["description"].as<std::string>());
     if (node["unit"])
         setCharField(conf->unit, node["unit"].as<std::string>());
-    //if (node["connection_uuid"])
-    //    setCharField(conf->connection_uuid, node["connection_uuid"].as<std::string>());
     if (node["filter"])
         setCharField(conf->filter, node["filter"].as<std::string>());
     if (node["factor"])
@@ -427,14 +425,23 @@ void *ad_configurator(void *configPtr)
         std::map<std::string, std::string> name;
         for (const auto &item : group["nameserver_parts"])
         {
-            // todo: parse the name from group["nameserver_parts"]
+	    std::cout << "DBG2" << std::endl;
+
+
+            auto k = item.first.as<std::string>();
+            auto v = item.second.as<std::string>();
+	    std::cout << "k=" << k << ", v=" << v << std::endl;
+
+            //logger->debug("Name mapping: {} = {}", k, v);
             name[item.first.as<std::string>()] = item.second.as<std::string>();
         }
+    
 
         for (const auto &item : name)
         {
 
-            logger->debug("Name mapping: {} = {}", item.first, item.second);
+	    std::cout << "DBG3" << std::endl;
+            //logger->debug("Name mapping: {} = {}", item.first, item.second);
         }
         seanerbus::client::Connection conn("demobus://localhost:5398", "demobus://localhost:5398");
 
@@ -446,19 +453,30 @@ void *ad_configurator(void *configPtr)
             {
                 if (!res.ok())
                 {
-                    logger->error("Resolve not ok: {}", res.unwrap_error().what());
+                    //logger->error("Resolve not ok: {}", res.unwrap_error().what());
                     conn.shutdown();
                     return;
                 }
-                entities = res.unwrap_ok().entities();
+                std::cout << "DBG4" << std::endl;
+		//auto entities_received = res.unwrap_ok();
+                auto entities_received = res.unwrap_ok().entities();
+
+		for (const auto &item: entities_received){
+			std::cout << item.as_string();
+			entities.push_back(item);
+		}
+
+
                 for (const auto &item : entities)
                 {
-                    logger->debug("Resolved entity: {}", item.as_string());
+                    //logger->debug("Resolved entity: {}", item.as_string());
                 }
                 conn.shutdown();
             });
         seanerbus::client::SimpleEventLoop sel(conn);
         sel.run();
+	
+        std::cout << "DBG5" << std::endl;
 
         for (const auto &item : entities)
         {
@@ -471,7 +489,7 @@ void *ad_configurator(void *configPtr)
 
             conf->uuid = strdup(item.as_string().c_str());
 
-            logger->info("Creating sensor with UUID: {}", conf->uuid);
+            //logger->info("Creating sensor with UUID: {}", conf->uuid);
             // apply group-level template attr
             if (templates)
             {
@@ -489,7 +507,8 @@ void *ad_configurator(void *configPtr)
             ::configs[conf->uuid] = conf;
         }
     }
-    logger->info("Total sensors configured: {}", ::configs.size());
+    std::cout << "DBG6" << std::endl;
+    //logger->info("Total sensors configured: {}", ::configs.size());
     assert(::configs.size() != 0);
 
     return yaml;
