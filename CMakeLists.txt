@@ -14,6 +14,61 @@ list(
 )
 
 # ============================================================================
+# seanerbus / capnp
+# ============================================================================
+
+set(
+    SEANERBUS_ROOT
+    ""
+    CACHE PATH
+    "Root installation path of seanerbus"
+)
+
+set(
+    CAPNP_ROOT
+    ""
+    CACHE PATH
+    "Root installation path of capnp"
+)
+
+set(
+    UUID_ROOT
+    ""
+    CACHE PATH
+    "Root installation path of uuid"
+)
+
+find_package(
+    PkgConfig
+    REQUIRED
+)
+
+list(APPEND CMAKE_PREFIX_PATH "${SEANERBUS_ROOT}" "${CAPNP_ROOT}" "${UUID_ROOT}")
+
+message(
+    STATUS
+    "PKG_CONFIG_PATH = $ENV{PKG_CONFIG_PATH}"
+)
+
+pkg_check_modules(
+    SEANERBUS
+    REQUIRED
+    IMPORTED_TARGET
+    seanerbus
+)
+
+pkg_check_modules(
+    CAPNP 
+    REQUIRED 
+    IMPORTED_TARGET 
+    capnp
+)
+
+
+pkg_check_modules(UUID REQUIRED IMPORTED_TARGET uuid)
+
+
+# ============================================================================
 # CMake modules
 # ============================================================================
 
@@ -71,60 +126,6 @@ target_include_directories(
     PRIVATE
         "${CMAKE_CURRENT_SOURCE_DIR}/include"
 )
-
-# ============================================================================
-# seanerbus / capnp
-# ============================================================================
-
-set(
-    SEANERBUS_ROOT
-    ""
-    CACHE PATH
-    "Root installation path of seanerbus"
-)
-
-set(
-    CAPNP_ROOT
-    ""
-    CACHE PATH
-    "Root installation path of capnp"
-)
-
-set(
-    UUID_ROOT
-    ""
-    CACHE PATH
-    "Root installation path of uuid"
-)
-
-find_package(
-    PkgConfig
-    REQUIRED
-)
-
-list(APPEND CMAKE_PREFIX_PATH "${SEANERBUS_ROOT}" "${CAPNP_ROOT}" "${UUID_ROOT}")
-
-message(
-    STATUS
-    "PKG_CONFIG_PATH = $ENV{PKG_CONFIG_PATH}"
-)
-
-pkg_check_modules(
-    SEANERBUS
-    REQUIRED
-    IMPORTED_TARGET
-    seanerbus
-)
-
-pkg_check_modules(
-    CAPNP 
-    REQUIRED 
-    IMPORTED_TARGET 
-    capnp
-)
-
-
-pkg_check_modules(UUID REQUIRED IMPORTED_TARGET uuid)
 
 
 # ============================================================================
