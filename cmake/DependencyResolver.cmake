@@ -50,7 +50,7 @@ function(dependency)
         DEP
         ""
         "NAME;VERSION;GIT_REPOSITORY;GIT_TAG;BUILD_TOOL"
-        "CONFIGURE_ARGS;LIBRARIES"
+        "CONFIGURE_ARGS;CMAKE_ARGS;LIBRARIES"
         ${ARGN}
     )
 
@@ -87,6 +87,12 @@ function(dependency)
     set(
         DEPENDENCY_${DEP_NAME}_CONFIGURE_ARGS
         "${DEP_CONFIGURE_ARGS}"
+        PARENT_SCOPE
+    )
+
+    set(
+        DEPENDENCY_${DEP_NAME}_CMAKE_ARGS
+        "${DEP_CMAKE_ARGS}"
         PARENT_SCOPE
     )
 
@@ -338,6 +344,11 @@ function(build_dependency_cmake dep)
     )
 
     set(
+	    cmake_args
+	    "${DEPENDENCY_${dep}_CMAKE_ARGS}"
+    )
+
+    set(
         install_dir
         "${DEPS_INSTALL_DIR}/${dep}"
     )
@@ -365,6 +376,7 @@ function(build_dependency_cmake dep)
             TRUE
 
         CMAKE_ARGS
+    	    ${cmake_args}
             -DCMAKE_INSTALL_PREFIX=${install_dir}
             -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}
 

@@ -14,6 +14,61 @@ list(
 )
 
 # ============================================================================
+# seanerbus / capnp
+# ============================================================================
+
+set(
+    SEANERBUS_ROOT
+    ""
+    CACHE PATH
+    "Root installation path of seanerbus"
+)
+
+set(
+    CAPNP_ROOT
+    ""
+    CACHE PATH
+    "Root installation path of capnp"
+)
+
+set(
+    UUID_ROOT
+    ""
+    CACHE PATH
+    "Root installation path of uuid"
+)
+
+find_package(
+    PkgConfig
+    REQUIRED
+)
+
+list(APPEND CMAKE_PREFIX_PATH "${SEANERBUS_ROOT}" "${CAPNP_ROOT}" "${UUID_ROOT}")
+
+message(
+    STATUS
+    "PKG_CONFIG_PATH = $ENV{PKG_CONFIG_PATH}"
+)
+
+pkg_check_modules(
+    SEANERBUS
+    REQUIRED
+    IMPORTED_TARGET
+    seanerbus
+)
+
+pkg_check_modules(
+    CAPNP 
+    REQUIRED 
+    IMPORTED_TARGET 
+    capnp
+)
+
+
+pkg_check_modules(UUID REQUIRED IMPORTED_TARGET uuid)
+
+
+# ============================================================================
 # CMake modules
 # ============================================================================
 
@@ -72,86 +127,7 @@ target_include_directories(
         "${CMAKE_CURRENT_SOURCE_DIR}/include"
 )
 
-# ============================================================================
-# seanerbus / capnp
-# ============================================================================
 
-set(
-    SEANERBUS_ROOT
-    ""
-    CACHE PATH
-    "Root installation path of seanerbus"
-)
-
-if(NOT SEANERBUS_ROOT)
-
-    message(FATAL_ERROR
-        "SEANERBUS_ROOT must be specified, "
-        "e.g. -DSEANERBUS_ROOT=/path/to/seanerbus/install"
-    )
-
-endif()
-
-set(
-    CAPNP_ROOT
-    ""
-    CACHE PATH
-    "Root installation path of capnp"
-)
-
-if(NOT CAPNP_ROOT)
-
-    message(FATAL_ERROR
-        "CAPNP_ROOT must be specified, "
-        "e.g. -DCAPNP_ROOT=/path/to/capnp/install"
-    )
-
-endif()
-
-set(
-    UUID_ROOT
-    ""
-    CACHE PATH
-    "Root installation path of uuid"
-)
-
-if(NOT UUID_ROOT)
-
-    message(FATAL_ERROR
-        "UUID_ROOT must be specified, "
-        "e.g. -DUUID_ROOT=/path/install"
-    )
-
-endif()
-
-find_package(
-    PkgConfig
-    REQUIRED
-)
-
-list(APPEND CMAKE_PREFIX_PATH "${SEANERBUS_ROOT}" "${CAPNP_ROOT}" "${UUID_ROOT}")
-
-message(
-    STATUS
-    "PKG_CONFIG_PATH = $ENV{PKG_CONFIG_PATH}"
-)
-
-pkg_check_modules(
-    SEANERBUS
-    REQUIRED
-    IMPORTED_TARGET
-    seanerbus
-)
-
-pkg_check_modules(
-    CAPNP 
-    REQUIRED 
-    IMPORTED_TARGET 
-    capnp
-)
-
-
-pkg_check_modules(UUID REQUIRED IMPORTED_TARGET uuid)
 # ============================================================================
 # Plugins
 # ============================================================================
@@ -179,12 +155,19 @@ resolve_dependencies(
 # Main target dependencies
 # ============================================================================
 
+get_cmake_property(_variableNames VARIABLES)
+list (SORT _variableNames)
+foreach (_variableName ${_variableNames})
+    message(STATUS "${_variableName}=${${_variableName}}")
+endforeach()
+
+
 target_link_libraries(
     telemetry_collector
     PRIVATE
         PkgConfig::SEANERBUS
-        yaml-cpp::yaml-cpp
-	spdlog::spdlog
+        yaml-cpp
+	    spdlog::spdlog
         ${CMAKE_DL_LIBS}
 )
 
@@ -193,6 +176,9 @@ set_target_properties(
     PROPERTIES
         BUILD_RPATH "${SEANERBUS_LIBRARY_DIRS}"
 )
+
+target_compile_definitions(telemetry_collector PUBLIC SPDLOG_FMT_EXTERNAL)
+
 target_link_libraries(telemetry_collector PRIVATE PkgConfig::UUID)
 
 # ============================================================================
@@ -215,6 +201,8 @@ foreach(plugin IN LISTS SELECTED_PLUGINS)
             PREFIX ""
     )
 
+    target_compile_definitions("${plugin}" PUBLIC SPDLOG_FMT_EXTERNAL)
+    
     target_include_directories(
         "${plugin}"
         PRIVATE BEFORE
@@ -231,18 +219,17 @@ foreach(plugin IN LISTS SELECTED_PLUGINS)
     target_link_libraries(
         "${plugin}"
         PRIVATE
+	        yaml-cpp
             spdlog::spdlog
             PkgConfig::SEANERBUS
     )
 
     foreach(dep IN LISTS plugin_dependencies)
-
         target_link_libraries(
             "${plugin}"
             PRIVATE
                 "${dep}::${dep}"
         )
-
     endforeach()
 
 endforeach()
