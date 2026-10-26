@@ -102,8 +102,8 @@ void applyFields(const YAML::Node &node, sensor_attribute_t *conf)
         setCharField(conf->description, node["description"].as<std::string>());
     if (node["unit"])
         setCharField(conf->unit, node["unit"].as<std::string>());
-    if (node["connection_uuid"])
-        setCharField(conf->connection_uuid, node["connection_uuid"].as<std::string>());
+    //if (node["connection_uuid"])
+    //    setCharField(conf->connection_uuid, node["connection_uuid"].as<std::string>());
     if (node["filter"])
         setCharField(conf->filter, node["filter"].as<std::string>());
     if (node["factor"])
@@ -146,12 +146,6 @@ bool applyTemplateConfigs(const YAML::Node &node, const YAML::Node &templates, s
 
 bool ad_init_sensors(void *runtime)
 {
-    // Connect to the server.
-    seanerbus::client::Connection conn("demobus://localhost:5398", "demobus://localhost:5398");
-
-    char hostname[HOST_NAME_MAX + 1];
-    gethostname(hostname, sizeof(hostname));
-
     for (const auto &[uuid, conf] : configs)
     {
         sensor_t *sensor = new sensor_t();
@@ -164,42 +158,7 @@ bool ad_init_sensors(void *runtime)
         ::sensors[uuid] = sensor;
         sensor_values[conf->uuid] = new SensorReading{0, 0.0};
 
-        auto entity = seanerbus::msg::Entity{seanerbus::msg::Uuid{conf->uuid}};
-
-        // appending hostname to the name []
-        auto it = conf->nameserver_parts.find("hostname");
-        const bool has_hostname = it != conf->nameserver_parts.end() && !it->second.empty();
-
-        if (!has_hostname)
-        {
-            conf->nameserver_parts["hostname"] = hostname;
-        }
-
-        // generating name str
-        std::string nameserver_parts_str;
-        for (const auto &[k, v] : conf->nameserver_parts)
-        {
-            nameserver_parts_str += k + "=" + v + ",";
-        }
-        nameserver_parts_str.pop_back();
-        logger->info("Registering sensor {{}}: {}", nameserver_parts_str, conf->uuid);
-
-        seanerbus::resolve::register_resolve(conn, conf->nameserver_parts, entity,
-                                             [](seanerbus::client::Connection &conn,
-                                                seanerbus::Expected<void, seanerbus::Error> res)
-                                             {
-                                                 if (!res.ok())
-                                                 {
-                                                     conn.shutdown();
-                                                     return;
-                                                 }
-                                                 conn.shutdown();
-                                             });
     }
-    seanerbus::client::SimpleEventLoop sl(conn);
-    sl.run();
-
-    conn.shutdown();
     return true; // We're using the global map, not returning a pointer to sensors
 }
 
@@ -298,8 +257,7 @@ void req_handler(seanerbus::client::Connection &conn, seanerbus::Expected<seaner
 void getPayload(sensor_attribute_t *conf, SensorReading *tv)
 {
     // todo: replace
-
-    auto entity = seanerbus::msg::Entity{seanerbus::msg::Uuid{conf->connection_uuid}};
+    auto entity = seanerbus::msg::Entity{seanerbus::msg::Uuid{conf->uuid}};
     // Connect to the server.
     seanerbus::client::Connection conn("demobus://localhost:5398", "demobus://localhost:5398");
 
@@ -460,16 +418,16 @@ void *ad_configurator(void *configPtr)
             }
         */
 
-        if (!group["names"])
+        if (!group["nameserver_parts"])
         {
             logger->error("Group '{}' missing name key value list", groupName);
             continue;
         }
 
         std::map<std::string, std::string> name;
-        for (const auto &item : group["names"])
+        for (const auto &item : group["nameserver_parts"])
         {
-            // todo: parse the name from group["names"]
+            // todo: parse the name from group["nameserver_parts"]
             name[item.first.as<std::string>()] = item.second.as<std::string>();
         }
 
