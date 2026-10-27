@@ -72,6 +72,20 @@ static void setCharField(char *&field, const std::string &value)
     std::memcpy(field, value.c_str(), value.size() + 1);
 }
 
+static std::string nameserverPartsToString(const std::map<std::string, std::string> &parts)
+{
+    std::string result;
+    for (const auto &[key, value] : parts)
+    {
+        result += key + "=" + value + ",";
+    }
+    if (!result.empty())
+    {
+        result.pop_back(); // Remove the trailing comma
+    }
+    return result;
+}
+
 void applyFields(const YAML::Node &node, sensor_attribute_t *conf)
 {
     if (!node)
@@ -79,21 +93,9 @@ void applyFields(const YAML::Node &node, sensor_attribute_t *conf)
 
     if (node["uuid"])
     {
-
         if (node["uuid"].IsScalar() && !node["uuid"].as<std::string>().empty())
         {
             setCharField(conf->uuid, node["uuid"].as<std::string>());
-        }
-        else
-        {
-            uuid_t id;
-            uuid_generate_random(id); // V4
-
-            char buf[37];
-            uuid_unparse_lower(id, buf);
-            std::string uuid(buf);
-
-            setCharField(conf->uuid, uuid);
         }
     }
     if (node["topic"])
@@ -156,20 +158,9 @@ bool sysfs_init_sensors(void *runtime)
     char hostname[HOST_NAME_MAX + 1];
     gethostname(hostname, sizeof(hostname));
 
-    for (const auto &[uuid, conf] : configs)
+    size_t responses = 0;
+    for (sensor_attribute_t *conf : configs)
     {
-        sensor_t *sensor = new sensor_t();
-
-        // Set the sensor configuration and sense function
-        sensor->conf = conf;
-        sensor->sense = sensor_sense;
-
-        // Add to the global sensors map using UUID as key
-        ::sensors[uuid] = sensor;
-        sensor_values[conf->uuid] = new SensorReading{0, 0.0};
-
-        auto entity = seanerbus::msg::Entity{seanerbus::msg::Uuid{conf->uuid}};
-
         // appending hostname to the name []
         auto it = conf->nameserver_parts.find("hostname");
         const bool has_hostname = it != conf->nameserver_parts.end() && !it->second.empty();
@@ -180,39 +171,104 @@ bool sysfs_init_sensors(void *runtime)
         }
 
         // generating name str
-        std::string nameserver_parts_str;
-        for (const auto &[k, v] : conf->nameserver_parts)
+        std::string nameserver_parts_str = nameserverPartsToString(conf->nameserver_parts);
+        
+        logger->debug("Resolving sensor {}", nameserver_parts_str);
+        seanerbus::resolve::resolve(conn, conf->nameserver_parts, [conf,&responses](auto &conn, auto res)
         {
-            nameserver_parts_str += k + "=" + v + ",";
-        }
-        nameserver_parts_str.pop_back();
-        logger->info("Registering sensor {{}}: {}", nameserver_parts_str, conf->uuid);
-
-        seanerbus::resolve::register_resolve(conn, conf->nameserver_parts, entity,
-                                             [](seanerbus::client::Connection &conn,
-                                                seanerbus::Expected<void, seanerbus::Error> res)
-                                             {
-                                                 if (!res.ok())
-                                                 {
-                                                     conn.shutdown();
-                                                     return;
-                                                 }
-                                                 conn.shutdown();
-                                             });
+            responses++;
+            std::string name;
+            if (res.ok())
+            {
+                name = nameserverPartsToString(conf->nameserver_parts);
+                std::vector<seanerbus::msg::Entity> entities = res.unwrap_ok().entities();
+                if (entities.size() > 0)
+                {
+                    setCharField(conf->uuid, entities[0].as_string());
+                    conf->has_been_resolved = true;
+                    logger->debug("Resolved sensor {} successfully to {}", name, conf->uuid);
+                } else {
+                    logger->debug("Resolved sensor {} successfully but no entities returned", name);
+                }
+                if (responses == configs.size())
+                {
+                    logger->debug("All responses received , shutting down connection");
+                    conn.shutdown(); // All sensors resolved, shutdown the connection
+                }
+            } else
+            {
+                logger->debug("Could not resolve sensor: {}", res.unwrap_error().what());
+            }
+        }); 
     }
 
     seanerbus::client::SimpleEventLoop sl(conn);
     sl.run();
 
-    conn.shutdown();
+    seanerbus::client::Connection conn2("demobus://localhost:5398", "demobus://localhost:5398");
+    responses = 0;
+    int to_be_registered = 0;
+    for (sensor_attribute_t *conf : configs)
+    {
+        std::string name = nameserverPartsToString(conf->nameserver_parts);
+
+        if (conf->has_been_resolved)
+        {
+            logger->warn("Sensor {} has been resolved, skipping registration", name);
+        } else {
+            if (conf->uuid == nullptr || strlen(conf->uuid) == 0)
+            {
+                uuid_t id;
+                uuid_generate_random(id); // V4
+
+                char uuid[37];
+                uuid_unparse_lower(id, uuid);
+                setCharField(conf->uuid, std::string(uuid));
+                logger->debug("Generated new UUID {}", conf->uuid);
+            }
+
+            to_be_registered++;
+            seanerbus::msg::Entity entity = seanerbus::msg::Entity{seanerbus::msg::Uuid{conf->uuid}};
+            seanerbus::resolve::register_resolve(conn2, conf->nameserver_parts, entity, [conf, &responses, &to_be_registered, name](seanerbus::client::Connection &conn, seanerbus::Expected<void, seanerbus::Error> res)
+            {
+                responses++;
+
+                if (!res.ok())
+                {
+                    logger->debug("Could not register sensor {}: {}", name, res.unwrap_error().what());
+                    return;
+                }
+                logger->debug("Registered sensor {} successfully: {}", name, conf->uuid);
+                if (responses == to_be_registered)
+                {
+                    logger->debug("All responses received , shutting down connection");
+                    conn.shutdown(); // All sensors registered, shutdown the connection
+                }
+            });
+        }
+        sensor_t *sensor = new sensor_t();
+        // Set the sensor configuration and sense function
+        sensor->conf = conf;
+        sensor->sense = sensor_sense;
+
+        // Add to the global sensors map using UUID as key
+        ::sensors[conf->uuid] = sensor;
+        sensor_values[conf->uuid] = new SensorReading{0, 0.0};
+    }
+    if (to_be_registered > 0)
+    {
+        seanerbus::client::SimpleEventLoop sl2(conn2);
+        sl2.run();
+    }
+
+    logger->debug("End of sysfs_init_sensors, total sensors configured: {}", ::sensors.size());
     return true; // We're using the global map, not returning a pointer to sensors
 }
 
 bool sysfs_finit(void *runtime)
 {
-    for (auto &pair : ::configs)
+    for (const sensor_attribute_t *conf : ::configs)
     {
-        sensor_attribute_t *conf = pair.second;
         if (conf)
         {
             delete conf->uuid;
@@ -467,7 +523,7 @@ void *sysfs_configurator(void *configPtr)
             applyFields(item, conf);
 
             // Add to the global sensors map using UUID as key
-            ::configs[conf->uuid] = conf;
+            ::configs.push_back(conf);
         }
     }
 
