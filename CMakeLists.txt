@@ -77,7 +77,6 @@ include(Dependencies)
 include(DependencyProviders)
 include(PluginDependencies)
 include(Plugins)
-
 # ============================================================================
 # Main dependency selection
 # ============================================================================
@@ -240,6 +239,14 @@ endforeach()
 
 include(GNUInstallDirs)
 
+set(TC_CONFIG_DIR "${CMAKE_INSTALL_FULL_SYSCONFDIR}/telemetry_collector")
+set(TC_PLUGIN_DIR "${CMAKE_INSTALL_FULL_LIBDIR}/telemetry_collector/plugins")
+
+# Writes config.yaml into the build tree
+configure_file(${CMAKE_CURRENT_SOURCE_DIR}/config/config.yaml.in
+               ${CMAKE_CURRENT_BINARY_DIR}/config.yaml @ONLY)
+
+
 install(
     TARGETS
         telemetry_collector
@@ -253,3 +260,10 @@ install(
     LIBRARY DESTINATION
         ${CMAKE_INSTALL_LIBDIR}/telemetry_collector/plugins
 )
+
+install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/config/
+        DESTINATION ${CMAKE_INSTALL_SYSCONFDIR}/telemetry_collector
+        FILES_MATCHING PATTERN "*.yaml") # copy yamls to install
+
+install(FILES ${CMAKE_CURRENT_BINARY_DIR}/config.yaml
+        DESTINATION ${CMAKE_INSTALL_SYSCONFDIR}/telemetry_collector) # copy config to install
