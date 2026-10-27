@@ -14,3 +14,7 @@ plugins:
     config: @TC_CONFIG_DIR@/snmp.yaml
     uuid: e94e6e91-a83d-4e04-a147-aab3860d0cd8
     name: snmp
+  - path: @TC_PLUGIN_DIR@/ad.so
+    config: @TC_CONFIG_DIR@/ad.yaml
+    uuid: e94e6e91-a83d-4e04-a147-aab3860d0cd3
+    name: ad
