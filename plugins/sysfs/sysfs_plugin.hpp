@@ -26,6 +26,7 @@ bool sysfs_free_config(void *config);
 typedef struct sensor_attribute
 {
     char *uuid;
+    bool has_been_resolved = false;
     char *topic;
     std::chrono::milliseconds interval_ms;
     char *description;
@@ -44,7 +45,7 @@ struct SensorReading
     double value = 0.0;
 };
 
-std::map<std::string, sensor_attribute_t *> configs; // uuid -> configs
+std::list<sensor_attribute_t *> configs;
 std::map<std::string, sensor_t *> sensors;           // uuid -> sensors
 
 /* exported plugin descriptor */
