@@ -6,7 +6,7 @@ variables:
     value: "4bfb120b8c9c55c60abd326fe9b759e5d33cc939"
     description: "Cap'n Proto message definition commit"
   TC_PLUGINS:
-    value: "tester;sysfs;mock"
+    value: "tester;sysfs;mock;snmp"
     description: "tc plugins to test"
 
 stages:
