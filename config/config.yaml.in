@@ -1,0 +1,16 @@
+seanerbus:
+  url: 10.42.0.69:5398
+
+plugins:
+  - path: @TC_PLUGIN_DIR@/sysfs.so
+    config: @TC_CONFIG_DIR@/sysfs.yaml
+    uuid: e94e6e91-a83d-4e04-a147-aab3860d0cd7
+    name: sysfs
+  - path: @TC_PLUGIN_DIR@/tester.so
+    config: @TC_CONFIG_DIR@/tester.yaml
+    uuid: e94e6e91-a83d-4e04-a147-aab3860d0cd9
+    name: tester
+  - path: @TC_PLUGIN_DIR@/snmp.so
+    config: @TC_CONFIG_DIR@/snmp.yaml
+    uuid: e94e6e91-a83d-4e04-a147-aab3860d0cd8
+    name: snmp
