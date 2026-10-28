@@ -12,6 +12,7 @@
 #include "logger.hpp"
 #include "plugin.hpp"
 #include "types.hpp"
+#include <optional>
 
 /* lifecycle */
 void *snmp_create(void);
@@ -25,6 +26,7 @@ void *snmp_run(void *runtime);
 /* config loading */
 void *snmp_configurator(void *config);
 bool snmp_free_config(void *config);
+static std::optional<spdlog::level::level_enum> parse_level(std::string s);
 
 typedef struct sensor_attribute
 {

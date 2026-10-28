@@ -10,6 +10,7 @@
 #include "logger.hpp"
 #include "plugin.hpp"
 #include "types.hpp"
+#include <optional>
 
 /* lifecycle */
 void *ad_create(void);
@@ -22,6 +23,8 @@ void *ad_run(void *runtime);
 /* config loading */
 void *ad_configurator(void *config);
 bool ad_free_config(void *config);
+static std::optional<spdlog::level::level_enum> parse_level(std::string s);
+
 typedef struct sensor_attribute
 {
     char *uuid;

@@ -387,7 +387,7 @@ void *tester_configurator(void *configPtr)
             logger->set_level(*level);
         }
         else
-            std::fprintf(stderr, "invalid log_level '%s' in config\n", name.c_str());
+            logger->error("invalid log_level {} in config", name.c_str());
     }
     if (!config["sensor_groups"])
     {
