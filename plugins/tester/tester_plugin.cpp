@@ -54,6 +54,8 @@ void *sensor_sense(void *sensor);
 void *tester_create(void)
 {
     logger = logging.create("telemetry-collector::tester");
+    auto log_level = static_cast<spdlog::level::level_enum>(SPDLOG_ACTIVE_LEVEL);
+    logger->set_level(log_level);
     // Return a pointer to the plugin_interface_t object as the instance
     return &plugin;
 }
