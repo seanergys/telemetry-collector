@@ -178,10 +178,6 @@ set_target_properties(
 
 target_compile_definitions(telemetry_collector PUBLIC SPDLOG_FMT_EXTERNAL)
 
-set(LOG_LEVEL "INFO" CACHE STRING "spdlog compile-time level")
-set_property(CACHE LOG_LEVEL PROPERTY STRINGS TRACE DEBUG INFO WARN ERROR CRITICAL OFF)
-add_compile_definitions(SPDLOG_ACTIVE_LEVEL=SPDLOG_LEVEL_${LOG_LEVEL})
-
 
 target_link_libraries(telemetry_collector PRIVATE PkgConfig::UUID)
 

@@ -53,10 +53,8 @@ void *sensor_sense(void *sensor);
 
 void *tester_create(void)
 {
-    logger = logging.create("telemetry-collector::tester");
-    auto log_level = static_cast<spdlog::level::level_enum>(SPDLOG_ACTIVE_LEVEL);
-    logger->set_level(log_level);
-    // Return a pointer to the plugin_interface_t object as the instance
+    if (!logger)
+        logger = logging.create("telemetry-collector::tester");
     return &plugin;
 }
 
@@ -74,6 +72,16 @@ static void setCharField(char *&field, const std::string &value)
     std::memcpy(field, value.c_str(), value.size() + 1);
 }
 
+static std::optional<spdlog::level::level_enum> parse_level(std::string s)
+{
+    std::transform(s.begin(), s.end(), s.begin(),
+                   [](unsigned char c)
+                   { return std::tolower(c); });
+    auto lvl = spdlog::level::from_str(s);
+    if (lvl == spdlog::level::off && s != "off")
+        return std::nullopt;
+    return lvl;
+}
 void applyFields(const YAML::Node &node, sensor_attribute_t *conf)
 {
     if (!node)
@@ -368,6 +376,19 @@ void *tester_configurator(void *configPtr)
         logger->info("No sensor_templates");
     }
 
+    const YAML::Node &log_level = config["log_level"];
+    if (log_level)
+    {
+        auto name = config["log_level"].as<std::string>();
+        if (auto level = parse_level(name))
+        {
+            if (!logger)
+                logger = logging.create("telemetry-collector::tester");
+            logger->set_level(*level);
+        }
+        else
+            std::fprintf(stderr, "invalid log_level '%s' in config\n", name.c_str());
+    }
     if (!config["sensor_groups"])
     {
         logger->error("Missing sensor_groups");
