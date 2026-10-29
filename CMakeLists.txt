@@ -243,7 +243,7 @@ include(GNUInstallDirs)
 set(TC_CONFIG_DIR "${CMAKE_INSTALL_FULL_SYSCONFDIR}/telemetry_collector")
 set(TC_PLUGIN_DIR "${CMAKE_INSTALL_FULL_LIBDIR}/telemetry_collector/plugins")
 
-option(TC_CONFIG_OVERWRITE "Generate and install configs" OFF)
+option(TC_CONFIG_OVERWRITE "Overwrite existing configs during install" OFF)
 if(DEFINED CACHE{TC_CONFIG_OVERWRITE})
   set(TC_CONFIG_OVERWRITE ${TC_CONFIG_OVERWRITE}) 
   unset(TC_CONFIG_OVERWRITE CACHE) # prevent cache
