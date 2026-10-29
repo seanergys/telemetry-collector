@@ -37,9 +37,9 @@ export LD_LIBRARY_PATH="$HOME/seanergys/telemetry-collector/install/capnp-0.8/li
 
 ```
 
-## Flags
+## Vars
 
 ### install configs
 ```
--DTC_CONFIG_INSTALL=ON
+-DTC_CONFIG_OVERWRITE=ON
 ```
