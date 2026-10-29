@@ -237,14 +237,19 @@ endforeach()
 # Installation
 # ============================================================================
 
+
 include(GNUInstallDirs)
+
+option(TC_CONFIG_INSTALL "Generate and install configs" OFF)
+if(DEFINED CACHE{TC_CONFIG_INSTALL})
+  set(TC_CONFIG_INSTALL ${TC_CONFIG_INSTALL}) 
+  unset(TC_CONFIG_INSTALL CACHE) # prevent cache
+else()
+  set(TC_CONFIG_INSTALL OFF)
+endif()
 
 set(TC_CONFIG_DIR "${CMAKE_INSTALL_FULL_SYSCONFDIR}/telemetry_collector")
 set(TC_PLUGIN_DIR "${CMAKE_INSTALL_FULL_LIBDIR}/telemetry_collector/plugins")
-
-# Writes config.yaml into the build tree
-configure_file(${CMAKE_CURRENT_SOURCE_DIR}/config/config.yaml.in
-               ${CMAKE_CURRENT_BINARY_DIR}/config.yaml @ONLY)
 
 
 install(
@@ -261,9 +266,22 @@ install(
         ${CMAKE_INSTALL_LIBDIR}/telemetry_collector/plugins
 )
 
-install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/config/
-        DESTINATION ${CMAKE_INSTALL_SYSCONFDIR}/telemetry_collector
-        FILES_MATCHING PATTERN "*.yaml") # copy yamls to install
+if(TC_CONFIG_INSTALL)
+    # Writes config.yaml into the build tree
+    configure_file(${CMAKE_CURRENT_SOURCE_DIR}/config/config.yaml.in
+                ${CMAKE_CURRENT_BINARY_DIR}/config.yaml @ONLY)
 
-install(FILES ${CMAKE_CURRENT_BINARY_DIR}/config.yaml
-        DESTINATION ${CMAKE_INSTALL_SYSCONFDIR}/telemetry_collector) # copy config to install
+
+    install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/config/
+            DESTINATION ${CMAKE_INSTALL_SYSCONFDIR}/telemetry_collector
+            FILES_MATCHING PATTERN "*.yaml") # copy yamls to install
+
+    install(FILES ${CMAKE_CURRENT_BINARY_DIR}/config.yaml
+            DESTINATION ${CMAKE_INSTALL_SYSCONFDIR}/telemetry_collector) # copy config to install
+
+    message(STATUS "Config will be installed to: ${TC_CONFIG_FILE}")
+
+else()
+    message(STATUS "Config not installed (TC_CONFIG_INSTALL=OFF), using existing: ${TC_CONFIG_FILE}")
+    install(CODE "message(STATUS \"Skipping config, existing: \$ENV{DESTDIR}${CMAKE_CURRENT_SOURCE_DIR}/config/\")")
+endif()
