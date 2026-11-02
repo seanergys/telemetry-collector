@@ -11,17 +11,9 @@ list(PREPEND CMAKE_MODULE_PATH "${PROJECT_SOURCE_DIR}/cmake")
 
 set(SEANERBUS_ROOT "" CACHE PATH "Root installation path of seanerbus")
 
-set(
-    CAPNP_ROOT
-    ""
-    CACHE PATH
-    "Root installation path of capnp"
-)
+set(CAPNP_ROOT "" CACHE PATH "Root installation path of capnp")
 
-find_package(
-    PkgConfig
-    REQUIRED
-)
+find_package(PkgConfig REQUIRED)
 
 list(APPEND CMAKE_PREFIX_PATH "${SEANERBUS_ROOT}" "${CAPNP_ROOT}")
 
@@ -29,16 +21,9 @@ message(STATUS "PKG_CONFIG_PATH = $ENV{PKG_CONFIG_PATH}")
 
 pkg_check_modules(SEANERBUS REQUIRED IMPORTED_TARGET seanerbus)
 
-pkg_check_modules(
-    CAPNP 
-    REQUIRED 
-    IMPORTED_TARGET 
-    capnp
-)
-
+pkg_check_modules(CAPNP REQUIRED IMPORTED_TARGET capnp)
 
 pkg_check_modules(UUID REQUIRED IMPORTED_TARGET uuid)
-
 
 # ============================================================================
 # CMake modules
@@ -53,26 +38,16 @@ include(Plugins)
 # Main dependency selection
 # ============================================================================
 
-set(MAIN_DEPENDENCIES
-    yaml-cpp
-    spdlog
-)
+set(MAIN_DEPENDENCIES yaml-cpp spdlog)
 
 # ============================================================================
 # telemetry collector
 # ============================================================================
 
-file(
-    GLOB
-    TELEMETRY_COLLECTOR_SOURCES
-    CONFIGURE_DEPENDS
-        "${CMAKE_CURRENT_SOURCE_DIR}/src/*.cpp"
-)
+file(GLOB TELEMETRY_COLLECTOR_SOURCES CONFIGURE_DEPENDS
+     "${CMAKE_CURRENT_SOURCE_DIR}/src/*.cpp")
 
-add_executable(
-    telemetry_collector
-    ${TELEMETRY_COLLECTOR_SOURCES}
-)
+add_executable(telemetry_collector ${TELEMETRY_COLLECTOR_SOURCES})
 
 target_compile_features(telemetry_collector PRIVATE cxx_std_20)
 
@@ -87,7 +62,6 @@ target_compile_options(
 
 target_include_directories(telemetry_collector
                            PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/include")
-
 
 # ============================================================================
 # Plugins
@@ -114,20 +88,14 @@ resolve_dependencies("${MAIN_DEPENDENCIES}" "${SELECTED_PLUGINS}")
 # ============================================================================
 
 get_cmake_property(_variableNames VARIABLES)
-list (SORT _variableNames)
-foreach (_variableName ${_variableNames})
-    message(STATUS "${_variableName}=${${_variableName}}")
+list(SORT _variableNames)
+foreach(_variableName ${_variableNames})
+  message(STATUS "${_variableName}=${${_variableName}}")
 endforeach()
 
-
 target_link_libraries(
-    telemetry_collector
-    PRIVATE
-        PkgConfig::SEANERBUS
-        yaml-cpp
-	    spdlog::spdlog
-        ${CMAKE_DL_LIBS}
-)
+  telemetry_collector PRIVATE PkgConfig::SEANERBUS yaml-cpp spdlog::spdlog
+                              ${CMAKE_DL_LIBS})
 
 set_target_properties(telemetry_collector
                       PROPERTIES BUILD_RPATH "${SEANERBUS_LIBRARY_DIRS}")
@@ -142,42 +110,33 @@ target_link_libraries(telemetry_collector PRIVATE PkgConfig::UUID)
 
 foreach(plugin IN LISTS SELECTED_PLUGINS)
 
-    add_library(
-        "${plugin}"
-        SHARED
-            "plugins/${plugin}/${plugin}_plugin.cpp"
-            ${COMMON_SOURCES}
-	    ${CMAKE_SOURCE_DIR}/src/logger.cpp # common functionalities between the TC and the plugins -> maybe separate this into common?
-    )
+  add_library(
+    "${plugin}" SHARED
+    "plugins/${plugin}/${plugin}_plugin.cpp"
+    ${COMMON_SOURCES}
+    ${CMAKE_SOURCE_DIR}/src/logger.cpp # common functionalities between the TC
+                                       # and the plugins -> maybe separate this
+                                       # into common?
+  )
 
   set_target_properties("${plugin}" PROPERTIES PREFIX "")
 
-    target_compile_definitions("${plugin}" PUBLIC SPDLOG_FMT_EXTERNAL)
-    
-    target_include_directories(
-        "${plugin}"
-        PRIVATE BEFORE
-            "${CMAKE_CURRENT_SOURCE_DIR}/include"
+  target_compile_definitions("${plugin}" PUBLIC SPDLOG_FMT_EXTERNAL)
+
+  target_include_directories(
+    "${plugin}"
+    PRIVATE BEFORE "${CMAKE_CURRENT_SOURCE_DIR}/include"
             "${CMAKE_CURRENT_SOURCE_DIR}/plugins/${plugin}"
-            "${UUID_INCLUDEDIR}"
-    )
+            "${UUID_INCLUDEDIR}")
 
   plugin_get_dependencies("${plugin}" plugin_dependencies)
 
-    target_link_libraries(
-        "${plugin}"
-        PRIVATE
-	        yaml-cpp
-            spdlog::spdlog
-            PkgConfig::SEANERBUS
-    )
+  target_link_libraries("${plugin}" PRIVATE yaml-cpp spdlog::spdlog
+                                            PkgConfig::SEANERBUS)
 
-    foreach(dep IN LISTS plugin_dependencies)
-        target_link_libraries(
-            "${plugin}"
-            PRIVATE "${dep}::${dep}"
-        )
-    endforeach()
+  foreach(dep IN LISTS plugin_dependencies)
+    target_link_libraries("${plugin}" PRIVATE "${dep}::${dep}")
+  endforeach()
 
 endforeach()
 
@@ -194,20 +153,16 @@ set(TC_PLUGIN_DIR "${CMAKE_INSTALL_FULL_LIBDIR}/telemetry_collector/plugins")
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/config/config.yaml.in
                ${CMAKE_CURRENT_BINARY_DIR}/config.yaml @ONLY)
 
+install(TARGETS telemetry_collector RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
 
-install(
-    TARGETS telemetry_collector
-    RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
-)
-
-install(
-    TARGETS ${SELECTED_PLUGINS}
-    LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}/telemetry_collector/plugins
-)
+install(TARGETS ${SELECTED_PLUGINS}
+        LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}/telemetry_collector/plugins)
 
 install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/config/
         DESTINATION ${CMAKE_INSTALL_SYSCONFDIR}/telemetry_collector
         FILES_MATCHING PATTERN "*.yaml") # copy yamls to install
 
 install(FILES ${CMAKE_CURRENT_BINARY_DIR}/config.yaml
-        DESTINATION ${CMAKE_INSTALL_SYSCONFDIR}/telemetry_collector) # copy config to install
+        DESTINATION ${CMAKE_INSTALL_SYSCONFDIR}/telemetry_collector) # copy
+                                                                     # config to
+                                                                     # install
