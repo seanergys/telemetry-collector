@@ -9,12 +9,7 @@ list(PREPEND CMAKE_MODULE_PATH "${PROJECT_SOURCE_DIR}/cmake")
 # seanerbus / capnp
 # ============================================================================
 
-set(
-    SEANERBUS_ROOT
-    ""
-    CACHE PATH
-    "Root installation path of seanerbus"
-)
+set(SEANERBUS_ROOT "" CACHE PATH "Root installation path of seanerbus")
 
 set(
     CAPNP_ROOT
@@ -30,17 +25,9 @@ find_package(
 
 list(APPEND CMAKE_PREFIX_PATH "${SEANERBUS_ROOT}" "${CAPNP_ROOT}")
 
-message(
-    STATUS
-    "PKG_CONFIG_PATH = $ENV{PKG_CONFIG_PATH}"
-)
+message(STATUS "PKG_CONFIG_PATH = $ENV{PKG_CONFIG_PATH}")
 
-pkg_check_modules(
-    SEANERBUS
-    REQUIRED
-    IMPORTED_TARGET
-    seanerbus
-)
+pkg_check_modules(SEANERBUS REQUIRED IMPORTED_TARGET seanerbus)
 
 pkg_check_modules(
     CAPNP 
