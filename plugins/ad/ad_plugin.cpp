@@ -217,7 +217,7 @@ double _applyFactorOffset(double value, double factor, double offset)
     return (value * factor) + offset;
 }
 
-void req_handler(seanerbus::client::Connection &conn, seanerbus::Expected<seanerbus::msg::Message, seanerbus::Error> res)
+void req_handler(seanerbus::client::Connection &conn, seanerbus::Expected<seanerbus::msg::Message, seanerbus::Error> res, SensorReading *tv)
 {
 
     if (!res.ok())
@@ -230,40 +230,70 @@ void req_handler(seanerbus::client::Connection &conn, seanerbus::Expected<seaner
 
     auto msg = std::move(res.unwrap_ok());
 
-    if (msg.payload_type() != HelloWorldResV1::TYPE)
+    if (msg.payload_type() != GetResV1::TYPE)
     {
         logger->error("Got unknown return message type!");
         return;
     }
 
-    auto rd_res = seanerbus::msg::MessageReader<HelloWorldResV1>::from_msg(msg);
+    // TODO uncomment this and remove the code below until before the connection shutdown.
+    // This is now using a new message patch in seanerbus so we can only test this after 
+    // we upgreade the seanerbus instance
+    /*
+    auto rd_res = seanerbus::msg::MessageReader<GetReqV1>::from_msg(msg);
 
     if (!rd_res.ok())
     {
-        logger->error("Failed to decode message as HelloWorldReqV1: {}", rd_res.unwrap_error().what());
+        std::cerr << "Could not parse message as :GetReqV1 " << rd_res.unwrap_error().what();
+        return;
+    }
+    auto rd = rd_res.unwrap_ok();
+
+    //logger->info("Got answer 1 to request: value={}, time={}", rd.reader().getValue(), rd.reader().getTime());
+
+    tv->value = rd.reader().getValue();
+    tv->time = rd.reader().getTime();
+    logger->info("Got answer 2 to request: value={}, time={}", tv->value, tv->time);
+    */    
+
+    auto payload = msg.payload();
+
+    if (payload.size() != sizeof(uint64_t) * 2)
+    {
+        logger->error("Invalid payload size: {}", payload.size());
         conn.shutdown();
         return;
     }
 
-    auto rd = std::move(rd_res.unwrap_ok());
+    uint64_t values[2];
+    std::memcpy(values, payload.data(), sizeof(values));
 
-    logger->info("Got answer to request: {}", rd.reader().getMsg().cStr());
+    logger->info("Got answer: value={}, time={}",
+                 values[0], values[1]);
+
+    tv->value = values[0];
+    tv->time = values[1];
+    logger->info("Got answer 2 to request: value={}, time={}", tv->value, tv->time);
 
     conn.shutdown();
 }
 
 void getPayload(sensor_attribute_t *conf, SensorReading *tv)
 {
-    // todo: replace
     auto entity = seanerbus::msg::Entity{seanerbus::msg::Uuid{conf->uuid}};
     // Connect to the server.
     seanerbus::client::Connection conn("demobus://localhost:5398", "demobus://localhost:5398");
 
-    seanerbus::msg::MessageBuilder<HelloWorldReqV1> bd;
+    seanerbus::msg::MessageBuilder<GetReqV1> bd;
 
-    bd.builder().setMsg("Hello World");
-
-    conn.request(bd.to_message(entity), req_handler);
+    conn.request(
+        bd.to_message(entity),
+        [tv](seanerbus::client::Connection &conn, auto res)
+        {
+            req_handler(conn, std::move(res), tv);
+    	    logger->info("Got answer, right after the request: value={}, time={}", tv->value, tv->time);
+        }
+    );
 
     seanerbus::client::SimpleEventLoop sel(conn);
 
@@ -271,7 +301,7 @@ void getPayload(sensor_attribute_t *conf, SensorReading *tv)
 
     if (!conn.result().ok())
     {
-        logger->error("./request failed: {}", conn.result().get_error().what());
+        logger->error("request failed: {}", conn.result().get_error().what());
     }
 }
 
@@ -334,6 +364,9 @@ void read_publish_schedule_next(seanerbus::client::Connection &conn,
     seanerbus::msg::MessageBuilder<TimeValueV1> msg_builder;
     msg_builder.builder().setTime(tv->time);
     msg_builder.builder().setValue(tv->value);
+
+
+    logger->info("Publishing: value={}, time={}", tv->value, tv->time);
 
     seanerbus::msg::Entity entity =
         seanerbus::msg::Entity{seanerbus::msg::Uuid{s.sensor->conf->uuid}};
@@ -462,7 +495,7 @@ void *ad_configurator(void *configPtr)
                 auto entities_received = res.unwrap_ok().entities();
 
 		for (const auto &item: entities_received){
-			std::cout << item.as_string();
+			std::cout << item.as_string() << std::endl;
 			entities.push_back(item);
 		}
 
