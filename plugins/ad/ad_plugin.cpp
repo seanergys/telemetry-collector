@@ -226,7 +226,7 @@ double _applyFactorOffset(double value, double factor, double offset)
     return (value * factor) + offset;
 }
 
-void req_handler(seanerbus::client::Connection &conn, seanerbus::Expected<seanerbus::msg::Message, seanerbus::Error> res, SensorReading *tv, SensorReading *tv)
+void req_handler(seanerbus::client::Connection &conn, seanerbus::Expected<seanerbus::msg::Message, seanerbus::Error> res, SensorReading *tv)
 {
 
     if (!res.ok())
