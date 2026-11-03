@@ -1,5 +1,6 @@
 name: snmp
 uuid: e94e6e91-a83d-4e04-a147-aab3860d0cyy
+log_level: INFO
 
 sensor_templates:
   power:

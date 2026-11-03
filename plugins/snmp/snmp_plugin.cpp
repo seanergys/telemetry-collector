@@ -46,7 +46,8 @@ void *sensor_sense(void *sensor);
 
 void *snmp_create(void)
 {
-    logger = logging.create("telemetry-collector::snmp");
+    if (!logger)
+        logger = logging.create("telemetry-collector::snmp");
     // Return a pointer to the plugin_interface_t object as the instance
     return &plugin;
 }
@@ -63,6 +64,17 @@ static void setCharField(char *&field, const std::string &value)
     delete[] field;
     field = new char[value.size() + 1];
     std::memcpy(field, value.c_str(), value.size() + 1);
+}
+
+static std::optional<spdlog::level::level_enum> parse_level(std::string s)
+{
+    std::transform(s.begin(), s.end(), s.begin(),
+                   [](unsigned char c)
+                   { return std::tolower(c); });
+    auto lvl = spdlog::level::from_str(s);
+    if (lvl == spdlog::level::off && s != "off")
+        return std::nullopt;
+    return lvl;
 }
 
 void setVersion(const std::string &version, sensor_attribute_t *conf)
@@ -638,6 +650,20 @@ void *snmp_configurator(void *configPtr)
     if (!templates)
     {
         logger->info("No sensor_templates");
+    }
+
+    const YAML::Node &log_level = config["log_level"];
+    if (log_level)
+    {
+        auto name = config["log_level"].as<std::string>();
+        if (auto level = parse_level(name))
+        {
+            if (!logger)
+                logger = logging.create("telemetry-collector::snmp");
+            logger->set_level(*level);
+        }
+        else
+            logger->error("invalid log_level {} in config", name.c_str());
     }
 
     if (!config["sensor_groups"])

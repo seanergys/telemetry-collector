@@ -53,7 +53,8 @@ void *sensor_sense(void *sensor);
 
 void *sysfs_create(void)
 {
-    logger = logging.create("telemetry-collector::sysfs");
+    if (!logger)
+        logger = logging.create("telemetry-collector::sysfs");
     // Return a pointer to the plugin_interface_t object as the instance
     return &plugin;
 }
@@ -70,6 +71,17 @@ static void setCharField(char *&field, const std::string &value)
     delete[] field;
     field = new char[value.size() + 1];
     std::memcpy(field, value.c_str(), value.size() + 1);
+}
+
+static std::optional<spdlog::level::level_enum> parse_level(std::string s)
+{
+    std::transform(s.begin(), s.end(), s.begin(),
+                   [](unsigned char c)
+                   { return std::tolower(c); });
+    auto lvl = spdlog::level::from_str(s);
+    if (lvl == spdlog::level::off && s != "off")
+        return std::nullopt;
+    return lvl;
 }
 
 static std::string nameserverPartsToString(const std::map<std::string, std::string> &parts)
@@ -172,10 +184,10 @@ bool sysfs_init_sensors(void *runtime)
 
         // generating name str
         std::string nameserver_parts_str = nameserverPartsToString(conf->nameserver_parts);
-        
+
         logger->debug("Resolving sensor {}", nameserver_parts_str);
-        seanerbus::resolve::resolve(conn, conf->nameserver_parts, [conf,&responses](auto &conn, auto res)
-        {
+        seanerbus::resolve::resolve(conn, conf->nameserver_parts, [conf, &responses](auto &conn, auto res)
+                                    {
             responses++;
             std::string name;
             if (res.ok())
@@ -198,8 +210,7 @@ bool sysfs_init_sensors(void *runtime)
             } else
             {
                 logger->debug("Could not resolve sensor: {}", res.unwrap_error().what());
-            }
-        }); 
+            } });
     }
 
     seanerbus::client::SimpleEventLoop sl(conn);
@@ -215,7 +226,9 @@ bool sysfs_init_sensors(void *runtime)
         if (conf->has_been_resolved)
         {
             logger->warn("Sensor {} has been resolved, skipping registration", name);
-        } else {
+        }
+        else
+        {
             if (conf->uuid == nullptr || strlen(conf->uuid) == 0)
             {
                 uuid_t id;
@@ -230,7 +243,7 @@ bool sysfs_init_sensors(void *runtime)
             to_be_registered++;
             seanerbus::msg::Entity entity = seanerbus::msg::Entity{seanerbus::msg::Uuid{conf->uuid}};
             seanerbus::resolve::register_resolve(conn2, conf->nameserver_parts, entity, [conf, &responses, &to_be_registered, name](seanerbus::client::Connection &conn, seanerbus::Expected<void, seanerbus::Error> res)
-            {
+                                                 {
                 responses++;
 
                 if (!res.ok())
@@ -243,8 +256,7 @@ bool sysfs_init_sensors(void *runtime)
                 {
                     logger->debug("All responses received , shutting down connection");
                     conn.shutdown(); // All sensors registered, shutdown the connection
-                }
-            });
+                } });
         }
         sensor_t *sensor = new sensor_t();
         // Set the sensor configuration and sense function
@@ -482,6 +494,20 @@ void *sysfs_configurator(void *configPtr)
     if (!templates)
     {
         logger->info("No sensor_templates");
+    }
+
+    const YAML::Node &log_level = config["log_level"];
+    if (log_level)
+    {
+        auto name = config["log_level"].as<std::string>();
+        if (auto level = parse_level(name))
+        {
+            if (!logger)
+                logger = logging.create("telemetry-collector::sysfs");
+            logger->set_level(*level);
+        }
+        else
+            logger->error("invalid log_level {} in config", name.c_str());
     }
 
     if (!config["sensor_groups"])

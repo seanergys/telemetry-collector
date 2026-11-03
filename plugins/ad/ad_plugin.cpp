@@ -51,7 +51,8 @@ void *sensor_sense(void *sensor);
 void *ad_create(void)
 {
     // Return a pointer to the plugin_interface_t object as the instance
-    logger = logging.create("telemetry-collector::ad");
+    if (!logger)
+        logger = logging.create("telemetry-collector::ad");
     return &plugin;
 }
 
@@ -68,7 +69,16 @@ static void setCharField(char *&field, const std::string &value)
     field = new char[value.size() + 1];
     std::memcpy(field, value.c_str(), value.size() + 1);
 }
-
+static std::optional<spdlog::level::level_enum> parse_level(std::string s)
+{
+    std::transform(s.begin(), s.end(), s.begin(),
+                   [](unsigned char c)
+                   { return std::tolower(c); });
+    auto lvl = spdlog::level::from_str(s);
+    if (lvl == spdlog::level::off && s != "off")
+        return std::nullopt;
+    return lvl;
+}
 void applyFields(const YAML::Node &node, sensor_attribute_t *conf)
 {
     if (!node)
@@ -155,7 +165,6 @@ bool ad_init_sensors(void *runtime)
         // Add to the global sensors map using UUID as key
         ::sensors[uuid] = sensor;
         sensor_values[conf->uuid] = new SensorReading{0, 0.0};
-
     }
     return true; // We're using the global map, not returning a pointer to sensors
 }
@@ -217,7 +226,7 @@ double _applyFactorOffset(double value, double factor, double offset)
     return (value * factor) + offset;
 }
 
-void req_handler(seanerbus::client::Connection &conn, seanerbus::Expected<seanerbus::msg::Message, seanerbus::Error> res)
+void req_handler(seanerbus::client::Connection &conn, seanerbus::Expected<seanerbus::msg::Message, seanerbus::Error> res, SensorReading *tv)
 {
 
     if (!res.ok())
@@ -230,40 +239,70 @@ void req_handler(seanerbus::client::Connection &conn, seanerbus::Expected<seaner
 
     auto msg = std::move(res.unwrap_ok());
 
-    if (msg.payload_type() != HelloWorldResV1::TYPE)
+    if (msg.payload_type() != GetResV1::TYPE)
     {
         logger->error("Got unknown return message type!");
         return;
     }
 
-    auto rd_res = seanerbus::msg::MessageReader<HelloWorldResV1>::from_msg(msg);
+    // TODO uncomment this and remove the code below until before the connection shutdown.
+    // This is now using a new message patch in seanerbus so we can only test this after 
+    // we upgreade the seanerbus instance
+    /*
+    auto rd_res = seanerbus::msg::MessageReader<GetReqV1>::from_msg(msg);
 
     if (!rd_res.ok())
     {
-        logger->error("Failed to decode message as HelloWorldReqV1: {}", rd_res.unwrap_error().what());
+        std::cerr << "Could not parse message as :GetReqV1 " << rd_res.unwrap_error().what();
+        return;
+    }
+    auto rd = rd_res.unwrap_ok();
+
+    //logger->info("Got answer 1 to request: value={}, time={}", rd.reader().getValue(), rd.reader().getTime());
+
+    tv->value = rd.reader().getValue();
+    tv->time = rd.reader().getTime();
+    logger->info("Got answer 2 to request: value={}, time={}", tv->value, tv->time);
+    */    
+
+    auto payload = msg.payload();
+
+    if (payload.size() != sizeof(uint64_t) * 2)
+    {
+        logger->error("Invalid payload size: {}", payload.size());
         conn.shutdown();
         return;
     }
 
-    auto rd = std::move(rd_res.unwrap_ok());
+    uint64_t values[2];
+    std::memcpy(values, payload.data(), sizeof(values));
 
-    logger->info("Got answer to request: {}", rd.reader().getMsg().cStr());
+    logger->info("Got answer: value={}, time={}",
+                 values[0], values[1]);
+
+    tv->value = values[0];
+    tv->time = values[1];
+    logger->info("Got answer 2 to request: value={}, time={}", tv->value, tv->time);
 
     conn.shutdown();
 }
 
 void getPayload(sensor_attribute_t *conf, SensorReading *tv)
 {
-    // todo: replace
     auto entity = seanerbus::msg::Entity{seanerbus::msg::Uuid{conf->uuid}};
     // Connect to the server.
     seanerbus::client::Connection conn("demobus://localhost:5398", "demobus://localhost:5398");
 
-    seanerbus::msg::MessageBuilder<HelloWorldReqV1> bd;
+    seanerbus::msg::MessageBuilder<GetReqV1> bd;
 
-    bd.builder().setMsg("Hello World");
-
-    conn.request(bd.to_message(entity), req_handler);
+    conn.request(
+        bd.to_message(entity),
+        [tv](seanerbus::client::Connection &conn, auto res)
+        {
+            req_handler(conn, std::move(res), tv);
+    	    logger->info("Got answer, right after the request: value={}, time={}", tv->value, tv->time);
+        }
+    );
 
     seanerbus::client::SimpleEventLoop sel(conn);
 
@@ -271,7 +310,7 @@ void getPayload(sensor_attribute_t *conf, SensorReading *tv)
 
     if (!conn.result().ok())
     {
-        logger->error("./request failed: {}", conn.result().get_error().what());
+        logger->error("request failed: {}", conn.result().get_error().what());
     }
 }
 
@@ -335,6 +374,9 @@ void read_publish_schedule_next(seanerbus::client::Connection &conn,
     msg_builder.builder().setTime(tv->time);
     msg_builder.builder().setValue(tv->value);
 
+
+    logger->info("Publishing: value={}, time={}", tv->value, tv->time);
+
     seanerbus::msg::Entity entity =
         seanerbus::msg::Entity{seanerbus::msg::Uuid{s.sensor->conf->uuid}};
 
@@ -392,6 +434,19 @@ void *ad_configurator(void *configPtr)
     {
         logger->info("No sensor_templates");
     }
+    const YAML::Node &log_level = config["log_level"];
+    if (log_level)
+    {
+        auto name = config["log_level"].as<std::string>();
+        if (auto level = parse_level(name))
+        {
+            if (!logger)
+                logger = logging.create("telemetry-collector::ad");
+            logger->set_level(*level);
+        }
+        else
+            logger->error("invalid log_level {} in config", name.c_str());
+    }
 
     if (!config["sensor_groups"])
     {
@@ -425,23 +480,21 @@ void *ad_configurator(void *configPtr)
         std::map<std::string, std::string> name;
         for (const auto &item : group["nameserver_parts"])
         {
-	    std::cout << "DBG2" << std::endl;
-
+            std::cout << "DBG2" << std::endl;
 
             auto k = item.first.as<std::string>();
             auto v = item.second.as<std::string>();
-	    std::cout << "k=" << k << ", v=" << v << std::endl;
+            std::cout << "k=" << k << ", v=" << v << std::endl;
 
-            //logger->debug("Name mapping: {} = {}", k, v);
+            // logger->debug("Name mapping: {} = {}", k, v);
             name[item.first.as<std::string>()] = item.second.as<std::string>();
         }
-    
 
         for (const auto &item : name)
         {
 
-	    std::cout << "DBG3" << std::endl;
-            //logger->debug("Name mapping: {} = {}", item.first, item.second);
+            std::cout << "DBG3" << std::endl;
+            // logger->debug("Name mapping: {} = {}", item.first, item.second);
         }
         seanerbus::client::Connection conn("demobus://localhost:5398", "demobus://localhost:5398");
 
@@ -453,29 +506,29 @@ void *ad_configurator(void *configPtr)
             {
                 if (!res.ok())
                 {
-                    //logger->error("Resolve not ok: {}", res.unwrap_error().what());
+                    // logger->error("Resolve not ok: {}", res.unwrap_error().what());
                     conn.shutdown();
                     return;
                 }
                 std::cout << "DBG4" << std::endl;
-		//auto entities_received = res.unwrap_ok();
+                // auto entities_received = res.unwrap_ok();
                 auto entities_received = res.unwrap_ok().entities();
 
 		for (const auto &item: entities_received){
-			std::cout << item.as_string();
+			std::cout << item.as_string() << std::endl;
 			entities.push_back(item);
 		}
 
 
                 for (const auto &item : entities)
                 {
-                    //logger->debug("Resolved entity: {}", item.as_string());
+                    // logger->debug("Resolved entity: {}", item.as_string());
                 }
                 conn.shutdown();
             });
         seanerbus::client::SimpleEventLoop sel(conn);
         sel.run();
-	
+
         std::cout << "DBG5" << std::endl;
 
         for (const auto &item : entities)
@@ -489,8 +542,8 @@ void *ad_configurator(void *configPtr)
 
             conf->uuid = strdup(item.as_string().c_str());
 
-            //logger->info("Creating sensor with UUID: {}", conf->uuid);
-            // apply group-level template attr
+            // logger->info("Creating sensor with UUID: {}", conf->uuid);
+            //  apply group-level template attr
             if (templates)
             {
                 applyTemplateConfigs(group, templates, conf);
@@ -508,7 +561,7 @@ void *ad_configurator(void *configPtr)
         }
     }
     std::cout << "DBG6" << std::endl;
-    //logger->info("Total sensors configured: {}", ::configs.size());
+    // logger->info("Total sensors configured: {}", ::configs.size());
     assert(::configs.size() != 0);
 
     return yaml;

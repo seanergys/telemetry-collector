@@ -4,7 +4,10 @@
 
 ```
 cd seanergys/telemetry-collector
-./telemetry-collector config.yaml
+ ./../install/bin/telemetry_collector ../install/etc/telemetry_collector/config.yaml
+
+# mod log level 
+# ../install/etc/telemetry_collector/ -> plugin_name.yaml
 ```
 
 ## t2 

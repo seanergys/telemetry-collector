@@ -10,6 +10,7 @@
 #include "logger.hpp"
 #include "plugin.hpp"
 #include "types.hpp"
+#include <optional>
 
 /* lifecycle */
 void *sysfs_create(void);
@@ -22,6 +23,8 @@ void *sysfs_run(void *runtime);
 /* config loading */
 void *sysfs_configurator(void *config);
 bool sysfs_free_config(void *config);
+
+static std::optional<spdlog::level::level_enum> parse_level(std::string s);
 
 typedef struct sensor_attribute
 {
@@ -46,7 +49,7 @@ struct SensorReading
 };
 
 std::list<sensor_attribute_t *> configs;
-std::map<std::string, sensor_t *> sensors;           // uuid -> sensors
+std::map<std::string, sensor_t *> sensors; // uuid -> sensors
 
 /* exported plugin descriptor */
 extern "C" plugin_interface_t plugin;
