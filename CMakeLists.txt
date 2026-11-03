@@ -102,6 +102,7 @@ set_target_properties(telemetry_collector
 
 target_compile_definitions(telemetry_collector PUBLIC SPDLOG_FMT_EXTERNAL)
 
+
 target_link_libraries(telemetry_collector PRIVATE PkgConfig::UUID)
 
 # ============================================================================

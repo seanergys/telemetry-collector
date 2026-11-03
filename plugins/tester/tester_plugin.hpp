@@ -10,6 +10,7 @@
 #include "logger.hpp"
 #include "plugin.hpp"
 #include "types.hpp"
+#include <optional>
 
 /* lifecycle */
 void *tester_create(void);
@@ -22,6 +23,7 @@ void *tester_run(void *runtime);
 /* config loading */
 void *tester_configurator(void *config);
 bool tester_free_config(void *config);
+static std::optional<spdlog::level::level_enum> parse_level(std::string s);
 
 typedef struct sensor_attribute
 {
