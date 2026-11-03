@@ -4,7 +4,10 @@
 
 ```
 cd seanergys/telemetry-collector
-./telemetry-collector config.yaml
+ ./../install/bin/telemetry_collector ../install/etc/telemetry_collector/config.yaml
+
+# mod log level 
+# ../install/etc/telemetry_collector/ -> plugin_name.yaml
 ```
 
 ## t2 
@@ -35,4 +38,11 @@ export PKG_CONFIG_PATH="$HOME/seanergys/telemetry-collector/install/capnp-0.8/li
 export PATH="$HOME/seanergys/telemetry-collector/install/capnp-0.8/bin:$PATH"
 export LD_LIBRARY_PATH="$HOME/seanergys/telemetry-collector/install/capnp-0.8/lib:$LD_LIBRARY_PATH"
 
+```
+
+## Vars
+
+### install configs
+```
+-DTC_CONFIG_OVERWRITE=ON
 ```
