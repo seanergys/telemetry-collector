@@ -238,7 +238,6 @@ void req_handler(seanerbus::client::Connection &conn, seanerbus::Expected<seaner
         return;
     }
 
-    /*
     auto rd_res = seanerbus::msg::MessageReader<GetResV1>::from_msg(msg);
 
     if (!rd_res.ok())
@@ -249,7 +248,7 @@ void req_handler(seanerbus::client::Connection &conn, seanerbus::Expected<seaner
         return;
     }
 
-    auto rd = std::move(rd_res.unwrap_ok());
+    auto rd = rd_res.unwrap_ok();
 
     uint64_t value = rd.reader().getValue();
     uint64_t time  = rd.reader().getTime();
@@ -258,9 +257,8 @@ void req_handler(seanerbus::client::Connection &conn, seanerbus::Expected<seaner
 
     tv->value = value;
     tv->time = time;
-
-    */
-
+ 
+    /*
     auto payload = msg.payload();
 
     if (payload.size() != sizeof(uint64_t) * 2)
@@ -278,6 +276,7 @@ void req_handler(seanerbus::client::Connection &conn, seanerbus::Expected<seaner
 
     tv->value = values[0];
     tv->time = values[1];
+    */
 
     conn.shutdown();
 }
