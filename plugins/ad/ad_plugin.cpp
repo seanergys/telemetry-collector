@@ -239,6 +239,8 @@ void req_handler(seanerbus::client::Connection &conn, seanerbus::Expected<seaner
 
     auto msg = std::move(res.unwrap_ok());
 
+
+
     if (msg.payload_type() != GetResV1::TYPE)
     {
         logger->error("Got unknown return message type!");
@@ -246,7 +248,7 @@ void req_handler(seanerbus::client::Connection &conn, seanerbus::Expected<seaner
     }
 
     // TODO uncomment this and remove the code below until before the connection shutdown.
-    // This is now using a new message patch in seanerbus so we can only test this after 
+    // This is now using a new message patch in seanerbus so we can only test this after
     // we upgreade the seanerbus instance
     /*
     auto rd_res = seanerbus::msg::MessageReader<GetReqV1>::from_msg(msg);
@@ -263,7 +265,7 @@ void req_handler(seanerbus::client::Connection &conn, seanerbus::Expected<seaner
     tv->value = rd.reader().getValue();
     tv->time = rd.reader().getTime();
     logger->info("Got answer 2 to request: value={}, time={}", tv->value, tv->time);
-    */    
+    */
 
     auto payload = msg.payload();
 
@@ -515,6 +517,7 @@ void *ad_configurator(void *configPtr)
                 auto entities_received = res.unwrap_ok().entities();
 
 		for (const auto &item: entities_received){
+			std::cout << item.as_string() << std::endl;
 			std::cout << item.as_string() << std::endl;
 			entities.push_back(item);
 		}
