@@ -230,35 +230,32 @@ void req_handler(seanerbus::client::Connection &conn, seanerbus::Expected<seaner
 
     auto msg = std::move(res.unwrap_ok());
 
-    
- 
     if (msg.payload_type() != GetResV1::TYPE)
     {
         logger->error("Got unknown return message type!");
         return;
     }
 
-    auto rd_res = seanerbus::msg::MessageReader<GetResV1>::from_msg(msg);
+    // TODO uncomment this and remove the code below until before the connection shutdown.
+    // This is now using a new message patch in seanerbus so we can only test this after 
+    // we upgreade the seanerbus instance
+    /*
+    auto rd_res = seanerbus::msg::MessageReader<GetReqV1>::from_msg(msg);
 
     if (!rd_res.ok())
     {
-        logger->error("Failed to decode message as GetResV1: {}",
-                      rd_res.unwrap_error().what());
-        conn.shutdown();
+        std::cerr << "Could not parse message as :GetReqV1 " << rd_res.unwrap_error().what();
         return;
     }
-
     auto rd = rd_res.unwrap_ok();
 
-    uint64_t value = rd.reader().getValue();
-    uint64_t time  = rd.reader().getTime();
+    //logger->info("Got answer 1 to request: value={}, time={}", rd.reader().getValue(), rd.reader().getTime());
 
-    logger->info("Got answer to request: value={}, time={}", value, time);
+    tv->value = rd.reader().getValue();
+    tv->time = rd.reader().getTime();
+    logger->info("Got answer 2 to request: value={}, time={}", tv->value, tv->time);
+    */    
 
-    tv->value = value;
-    tv->time = time;
- 
-    /*
     auto payload = msg.payload();
 
     if (payload.size() != sizeof(uint64_t) * 2)
@@ -276,7 +273,7 @@ void req_handler(seanerbus::client::Connection &conn, seanerbus::Expected<seaner
 
     tv->value = values[0];
     tv->time = values[1];
-    */
+    logger->info("Got answer 2 to request: value={}, time={}", tv->value, tv->time);
 
     conn.shutdown();
 }
@@ -294,6 +291,7 @@ void getPayload(sensor_attribute_t *conf, SensorReading *tv)
         [tv](seanerbus::client::Connection &conn, auto res)
         {
             req_handler(conn, std::move(res), tv);
+    	    logger->info("Got answer, right after the request: value={}, time={}", tv->value, tv->time);
         }
     );
 
@@ -366,6 +364,9 @@ void read_publish_schedule_next(seanerbus::client::Connection &conn,
     seanerbus::msg::MessageBuilder<TimeValueV1> msg_builder;
     msg_builder.builder().setTime(tv->time);
     msg_builder.builder().setValue(tv->value);
+
+
+    logger->info("Publishing: value={}, time={}", tv->value, tv->time);
 
     seanerbus::msg::Entity entity =
         seanerbus::msg::Entity{seanerbus::msg::Uuid{s.sensor->conf->uuid}};
