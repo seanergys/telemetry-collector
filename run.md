@@ -39,3 +39,10 @@ export PATH="$HOME/seanergys/telemetry-collector/install/capnp-0.8/bin:$PATH"
 export LD_LIBRARY_PATH="$HOME/seanergys/telemetry-collector/install/capnp-0.8/lib:$LD_LIBRARY_PATH"
 
 ```
+
+## Vars
+
+### install configs
+```
+-DTC_CONFIG_OVERWRITE=ON
+```

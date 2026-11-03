@@ -145,25 +145,50 @@ endforeach()
 # Installation
 # ============================================================================
 
+
 include(GNUInstallDirs)
 
 set(TC_CONFIG_DIR "${CMAKE_INSTALL_FULL_SYSCONFDIR}/telemetry_collector")
 set(TC_PLUGIN_DIR "${CMAKE_INSTALL_FULL_LIBDIR}/telemetry_collector/plugins")
 
-# Writes config.yaml into the build tree
-configure_file(${CMAKE_CURRENT_SOURCE_DIR}/config/config.yaml.in
-               ${CMAKE_CURRENT_BINARY_DIR}/config.yaml @ONLY)
+option(TC_CONFIG_OVERWRITE "Overwrite existing configs during install" OFF)
+if(DEFINED CACHE{TC_CONFIG_OVERWRITE})
+  set(TC_CONFIG_OVERWRITE ${TC_CONFIG_OVERWRITE}) 
+  unset(TC_CONFIG_OVERWRITE CACHE) # prevent cache
+endif()
+
+if(TC_CONFIG_OVERWRITE)
+  set(_tc_override TRUE)
+else()
+  set(_tc_override FALSE)
+endif()
 
 install(TARGETS telemetry_collector RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
 
 install(TARGETS ${SELECTED_PLUGINS}
         LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}/telemetry_collector/plugins)
 
-install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/config/
-        DESTINATION ${CMAKE_INSTALL_SYSCONFDIR}/telemetry_collector
-        FILES_MATCHING PATTERN "*.yaml") # copy yamls to install
+# Writes config.yaml to build
+configure_file(${CMAKE_CURRENT_SOURCE_DIR}/config/config.yaml.in
+                ${CMAKE_CURRENT_BINARY_DIR}/config.yaml @ONLY)
 
-install(FILES ${CMAKE_CURRENT_BINARY_DIR}/config.yaml
-        DESTINATION ${CMAKE_INSTALL_SYSCONFDIR}/telemetry_collector) # copy
-                                                                     # config to
-                                                                     # install
+# get all .yamls
+file(GLOB _tc_plugin_yamls CONFIGURE_DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/config/*.yaml)
+set(_tc_configs ${CMAKE_CURRENT_BINARY_DIR}/config.yaml ${_tc_plugin_yamls})
+
+install(CODE "
+  set(_override ${_tc_override})
+  set(_dst \"\$ENV{DESTDIR}${TC_CONFIG_DIR}\")
+  foreach(_src ${_tc_configs})
+    get_filename_component(_name \"\${_src}\" NAME)
+    if(NOT EXISTS \"\${_dst}/\${_name}\")
+      message(STATUS \"New config: \${_dst}/\${_name}\")
+      file(INSTALL \"\${_src}\" DESTINATION \"\${_dst}\")
+    elseif(_override)
+      message(STATUS \"Overriding config: \${_dst}/\${_name}\")
+      file(INSTALL \"\${_src}\" DESTINATION \"\${_dst}\")
+    else()
+      message(STATUS \"Keeping existing config: \${_dst}/\${_name}\")
+    endif()
+  endforeach()
+")
