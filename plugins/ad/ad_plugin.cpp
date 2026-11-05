@@ -293,7 +293,7 @@ void getPayload(sensor_attribute_t *conf, SensorReading *tv)
 {
     auto entity = seanerbus::msg::Entity{seanerbus::msg::Uuid{conf->uuid}};
     // Connect to the server.
-    seanerbus::client::Connection conn("demobus://localhost:5398", "demobus://localhost:5398");
+    seanerbus::client::Connection conn("seanerbroker://localhost:5398", "seanerbroker://localhost:5398");
 
     seanerbus::msg::MessageBuilder<GetReqV1> bd;
 
@@ -408,7 +408,7 @@ void *ad_run(void *runtime)
                     s.second});
     }
 
-    seanerbus::client::Connection conn("demobus://localhost:5398", "demobus://localhost:5398");
+    seanerbus::client::Connection conn("seanerbroker://localhost:5398", "seanerbroker://localhost:5398");
     read_publish_schedule_next(conn, queue);
 
     seanerbus::client::SimpleEventLoop sl(conn);
@@ -498,7 +498,7 @@ void *ad_configurator(void *configPtr)
             std::cout << "DBG3" << std::endl;
             // logger->debug("Name mapping: {} = {}", item.first, item.second);
         }
-        seanerbus::client::Connection conn("demobus://localhost:5398", "demobus://localhost:5398");
+        seanerbus::client::Connection conn("seanerbroker://localhost:5398", "seanerbroker://localhost:5398");
 
         std::vector<seanerbus::msg::Entity> entities;
         seanerbus::resolve::resolve(

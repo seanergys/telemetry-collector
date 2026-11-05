@@ -165,7 +165,7 @@ bool sysfs_init_sensors(void *runtime)
     // Get the plugin config from runtime
 
     // Connect to the server.
-    seanerbus::client::Connection conn("demobus://localhost:5398", "demobus://localhost:5398");
+    seanerbus::client::Connection conn("seanerbroker://localhost:5398", "seanerbroker://localhost:5398");
 
     char hostname[HOST_NAME_MAX + 1];
     gethostname(hostname, sizeof(hostname));
@@ -216,7 +216,7 @@ bool sysfs_init_sensors(void *runtime)
     seanerbus::client::SimpleEventLoop sl(conn);
     sl.run();
 
-    seanerbus::client::Connection conn2("demobus://localhost:5398", "demobus://localhost:5398");
+    seanerbus::client::Connection conn2("seanerbroker://localhost:5398", "seanerbroker://localhost:5398");
     responses = 0;
     int to_be_registered = 0;
     for (sensor_attribute_t *conf : configs)
@@ -468,7 +468,7 @@ void *sysfs_run(void *runtime)
         queue.push({std::chrono::steady_clock::now(),
                     s.second});
     }
-    seanerbus::client::Connection conn("demobus://localhost:5398", "demobus://localhost:5398");
+    seanerbus::client::Connection conn("seanerbroker://localhost:5398", "seanerbroker://localhost:5398");
     read_publish_schedule_next(conn, queue);
 
     seanerbus::client::SimpleEventLoop sl(conn);

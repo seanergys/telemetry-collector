@@ -308,7 +308,7 @@ bool snmp_init_sensors(void *runtime)
     // Get the plugin config from runtime
 
     // Connect to the server.
-    seanerbus::client::Connection conn("demobus://localhost:5398", "demobus://localhost:5398");
+    seanerbus::client::Connection conn("seanerbroker://localhost:5398", "seanerbroker://localhost:5398");
 
     char hostname[HOST_NAME_MAX + 1];
     gethostname(hostname, sizeof(hostname));
@@ -624,7 +624,7 @@ void *snmp_run(void *runtime)
                     s.second});
     }
 
-    seanerbus::client::Connection conn("demobus://localhost:5398", "demobus://localhost:5398");
+    seanerbus::client::Connection conn("seanerbroker://localhost:5398", "seanerbroker://localhost:5398");
     read_publish_schedule_next(conn, queue);
 
     seanerbus::client::SimpleEventLoop sl(conn);
