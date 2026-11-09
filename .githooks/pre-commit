@@ -1,0 +1,45 @@
+#!/usr/bin/env bash
+# SPDX-FileCopyrightText: 2026 SEANERGYS Partners <https://seanergys.eu>
+#
+# SPDX-License-Identifier: EUPL-1.2
+
+set -euo pipefail
+
+copyright_text='SPDX-FileCopyrightText: 2026 SEANERGYS Partners <https://seanergys.eu>'
+license_text='SPDX-License-Identifier: EUPL-1.2'
+failed=0
+
+staged_header() {
+    local file="$1"
+
+    git show ":$file" 2>/dev/null |
+        sed -n '1,12{s/<!--//g;s/-->//g;s/^[[:space:]]*\/\/[[:space:]]*//;s/^[[:space:]]*#[[:space:]]*//;s/^[[:space:]]*\/\*[[:space:]]*//;s/^[[:space:]]*\*[[:space:]]*//;s/^[[:space:]]*--[[:space:]]*//;s/^[[:space:]]*;[[:space:]]*//;p;}'
+}
+
+has_notices() {
+    local file="$1"
+    local header
+
+    header="$(staged_header "$file")" || return 1
+    [[ "$header" == *"$copyright_text"* && "$header" == *"$license_text"* ]]
+}
+
+while IFS= read -r -d '' file; do
+    if [[ "$file" == "LICENSE" ]]; then
+        continue
+    fi
+
+    if [[ "$file" == *.license ]]; then
+        if has_notices "$file"; then
+            continue
+        fi
+    elif has_notices "$file" || has_notices "$file.license"; then
+        continue
+    fi
+
+    printf 'Missing SPDX copyright and EUPL-1.2 header: %s\n' "$file" >&2
+    printf 'Add the notices at the top, or add a matching .license sidecar.\n' >&2
+    failed=1
+done < <(git diff --cached --name-only --diff-filter=A -z --)
+
+exit "$failed"
