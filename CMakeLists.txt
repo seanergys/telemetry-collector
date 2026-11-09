@@ -1,3 +1,7 @@
+# SPDX-FileCopyrightText: 2026 SEANERGYS Partners <https://seanergys.eu>
+#
+# SPDX-License-Identifier: EUPL-1.2
+
 cmake_minimum_required(VERSION 3.13)
 
 project(telemetry_collector VERSION 0.1

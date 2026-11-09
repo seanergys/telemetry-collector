@@ -1,3 +1,7 @@
+// SPDX-FileCopyrightText: 2026 SEANERGYS Partners <https://seanergys.eu>
+//
+// SPDX-License-Identifier: EUPL-1.2
+
 #include <yaml-cpp/yaml.h>
 #include <iostream>
 
