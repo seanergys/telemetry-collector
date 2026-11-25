@@ -24,6 +24,23 @@ has_notices() {
     [[ "$header" == *"$copyright_text"* && "$header" == *"$license_text"* ]]
 }
 
+has_licensed_symlink_target() {
+    local file="$1"
+    local entry link target
+
+    entry="$(git --literal-pathspecs ls-files --stage -- "$file")" || return 1
+    [[ "$entry" == '120000 '* ]] || return 1
+    link="$(git show ":$file")" || return 1
+    [[ -n "$link" && "$link" != /* ]] || return 1
+
+    # Resolve the staged relative path without following working-tree symlinks.
+    target="$(realpath -ms --relative-to=. -- "$(dirname -- "$file")/$link")" || return 1
+    [[ "$target" != '..' && "$target" != ../* ]] || return 1
+    entry="$(git --literal-pathspecs ls-files --stage -- "$target")" || return 1
+    [[ "$entry" == '100644 '* || "$entry" == '100755 '* ]] || return 1
+    has_notices "$target" || has_notices "$target.license"
+}
+
 while IFS= read -r -d '' file; do
     if [[ "$file" == "LICENSE" ]]; then
         continue
@@ -33,7 +50,7 @@ while IFS= read -r -d '' file; do
         if has_notices "$file"; then
             continue
         fi
-    elif has_notices "$file" || has_notices "$file.license"; then
+    elif has_notices "$file" || has_notices "$file.license" || has_licensed_symlink_target "$file"; then
         continue
     fi
 
