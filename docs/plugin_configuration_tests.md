@@ -1,0 +1,1 @@
+../tests/plugin_configuration/plugin_configuration_tests.md

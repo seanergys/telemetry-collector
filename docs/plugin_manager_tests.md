@@ -1,0 +1,1 @@
+../tests/plugin_manager/plugin_manager_tests.md

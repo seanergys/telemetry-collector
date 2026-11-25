@@ -8,7 +8,8 @@ SPDX-License-Identifier: EUPL-1.2
 
 [![GitLab CI and test pipeline status on main](https://gitlab.seanergys.fz-juelich.de/software/telemetry-collector/badges/main/pipeline.svg?key_text=CI%20%26%20tests)](https://gitlab.seanergys.fz-juelich.de/software/telemetry-collector/-/pipelines?ref=main)
 [![C++20](https://img.shields.io/badge/C%2B%2B-20-00599C)](#source-tree)
-[![Documentation](https://img.shields.io/badge/docs-guides-2563EB)](#installation-and-usage)
+[![Documentation](https://img.shields.io/badge/docs-guides-2563EB)](docs/README.md)
+[![Configuration reference](https://img.shields.io/badge/configuration-YAML-0F766E)](config/README.md)
 [![License EUPL-1.2](https://img.shields.io/badge/license-EUPL--1.2-2563EB)](LICENSE)
 
 [![Build with CMake](https://img.shields.io/badge/build-CMake-064F8C)](INSTALL.md#install-manually-with-cmake)
@@ -17,7 +18,7 @@ SPDX-License-Identifier: EUPL-1.2
 [![Runs on Linux](https://img.shields.io/badge/platform-Linux-334155)](INSTALL.md#prerequisites)
 [![Publishes through SeanerBUS](https://img.shields.io/badge/transport-SeanerBUS-0E7490)](RUN.md)
 
-[Install](INSTALL.md) · [Run locally](RUN.md) · [Plugins](#implemented-plugins) ·
+[Install](INSTALL.md) · [Run locally](RUN.md) · [Configuration](config/README.md) · [Plugins](#implemented-plugins) ·
 [Test reports](#test-reports) · [Contributing](CONTRIBUTING.md)
 
 **Topics** `telemetry` · `monitoring` · `linux` · `snmp` · `seanerbus` · `cpp` · `cmake` · `spack`
@@ -27,6 +28,18 @@ sensor readings and publishes them to a SeanerBUS broker. Plugins supply the
 readings from sources such as local Linux attributes and network devices.
 Subscribers receive numeric values on the SeanerBUS entity identified by
 each sensor's UUID.
+
+## Architecture
+
+The collector implements the modular, extensible plugin design described
+in SEANERGYS deliverable D2.1. It runs close to the data sources, for example
+on compute nodes or facility frontends, and manages the lifecycle of the
+telemetry plugins deployed there.
+
+The collector is designed to run continuously as a background service.
+On Linux, a service manager such as `systemd` can supervise the process.
+The collector keeps its plugins active until it receives a termination
+signal such as `SIGTERM` or `SIGINT`, then begins shutting them down.
 
 The collector reads a main YAML configuration with the broker URL and a list
 of plugin libraries and their configuration files. The plugin manager validates
@@ -43,7 +56,7 @@ sensor names.
 | [`src/`](src/) | Collector entry point, YAML configuration reader, plugin manager, and logging implementation. |
 | [`include/`](include/) | Plugin interface, runtime and sensor types, and collector headers. |
 | [`plugins/`](plugins/) | Plugin implementations and shared helpers in `plugin_common.hpp`. |
-| [`config/`](config/) | Main configuration template and example YAML for each implemented plugin. |
+| [`config/`](config/README.md) | Main configuration template and example YAML for each implemented plugin. |
 | [`cmake/`](cmake/) | Plugin discovery, dependency resolution, and build support. |
 | [`tests/`](tests/README.md) | Plugin manager tests, configuration tests, and plugin tests that run against locally deployed services and componets. |
 
@@ -58,6 +71,9 @@ sensor names.
 | [`mock`](plugins/mock/) | Provides a minimal plugin for exercising loading, configuration, and lifecycle operations. |
 
 ## Installation and usage
+
+See the [configuration reference](config/README.md) for the main YAML and
+each plugin’s parameters.
 
 See the [installation guide](INSTALL.md) for the Spack and manual CMake
 workflows, and [RUN.md](RUN.md) for running the collector with SeanerBUS.
