@@ -3,7 +3,6 @@
 *.so
 *.yaml
 .vscode/
-tests
 capnproto-*
 install
 telemetry-collector
@@ -15,3 +14,4 @@ capnp-0.8
 *.out
 util-linux-2.42.4
 !config/*.yaml
+!tests/**/*.yaml

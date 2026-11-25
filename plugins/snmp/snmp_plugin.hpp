@@ -29,20 +29,9 @@ void *snmp_run(void *runtime);
 
 /* config loading */
 void *snmp_configurator(void *config);
-bool snmp_free_config(void *config);
-static std::optional<spdlog::level::level_enum> parse_level(std::string s);
 
-typedef struct sensor_attribute
+typedef struct sensor_attribute : generic_sensor_attribute_t
 {
-    char *uuid;
-    char *topic;
-    std::chrono::milliseconds interval_ms;
-    char *unit;
-    char *description;
-    char *filter;
-    double factor = 1;
-    double offset = 0;
-    std::map<std::string, std::string> nameserver_parts;
     char *connection;
     char *type;
     std::string snmpCommunity;

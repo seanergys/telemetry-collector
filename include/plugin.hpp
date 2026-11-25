@@ -19,6 +19,7 @@
 #include <stdbool.h>
 
 #include "types.hpp"
+#include "semver.h"
 
 typedef struct pluginConfig
 {
@@ -26,22 +27,20 @@ typedef struct pluginConfig
     char* uuid;
     char* config;
     char* name;
+    std::string seanerbus_url;
 } config_t;
 
+typedef version_t* get_version_t(void);
 typedef void* create_t(void);
 typedef bool  destroy_t(void*);
 typedef bool  init_sensors_t (void*);
-typedef bool  init_actors_t (void*);
 typedef bool  finit_t (void*);
 typedef bool  init_connections_t (void*);
 typedef bool  finit_connections_t (void*);
 
 typedef void* configurator_t (void*);
-typedef bool  free_config_t(void*);
 
 typedef void* run_t(void*); // typedef void* publish_t(void*);
-typedef void* req_t(void*);
-typedef void* res_t(void*);
 
 //typedef seanerbus::client::Connection* connection_t;
 typedef void* connection_t;
@@ -49,43 +48,35 @@ typedef void* connection_t;
 // This contains only the function pointers and version info - the static interface
 typedef struct
 {
-    uint32_t version;
+    get_version_t* get_version;
 
     create_t*  create;
     destroy_t* destroy;
 
     init_sensors_t* init_sensors;
-    init_actors_t* init_actors;
     finit_t*    finit;
 
-    init_connections_t* init_downstream_connections;
-    finit_connections_t* finit_downstream_connections;
-
-    run_t* run; // publish
-    req_t* req; // method to make requests (e.g., to the access daemon)
-    res_t* res; // method to make requests (e.g., to the access daemon);
+    run_t* run;
 
     configurator_t* configurator;  // Plugin-specific configurator function
-    free_config_t* free_config;
 
-    // Note: sensors, actors, connection, config moved to runtime_t (runtime state)
 } plugin_interface_t;
 
 // Runtime state (managed by plugin manager)
-// This contains the runtime resources and state
+// This struct contains the runtime resources and state
 typedef struct
 {
+    // Library
     void* library;
 
-    plugin_interface_t* plugin;  // Plugin descriptor (function pointers)
+    // Plugin descriptor
+    plugin_interface_t* plugin;
 
-    // Runtime state (moved from plugin_interface_t)
     // Using boolean flags instead of pointers for status checking
     bool sensors_initialized;
-    bool actors_initialized;
     connection_t* connection;
-    bool downstream_connections_initialized;
     void* config;  // Plugin-specific configuration (YAML or parsed data)
+    std::string seanerbus_url;
 
     bool loaded;
     bool initialized;

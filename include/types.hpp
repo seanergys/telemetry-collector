@@ -4,9 +4,26 @@
 
 #pragma once
 #include <cstdint>
+#include <chrono>
+#include <map>
+#include <string>
 
 typedef void* sense_t(void*);
 typedef void* act_t(void*);
+
+struct generic_sensor_attribute_t
+{
+    char *uuid = nullptr;
+    char *topic = nullptr;
+    std::chrono::milliseconds interval_ms{0};
+    char *description = nullptr;
+    char *unit = nullptr;
+    char *filter = nullptr;
+    double factor = 1;
+    double offset = 0;
+    std::map<std::string, std::string> nameserver_parts;
+    bool uuid_specified_in_config = false;
+};
 
 typedef struct sensor_attribute sensor_attribute_t;
 typedef struct sensor

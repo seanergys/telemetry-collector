@@ -3,10 +3,15 @@
 // SPDX-License-Identifier: EUPL-1.2
 
 #include "mock_plugin.hpp"
+#include <yaml-cpp/yaml.h>
 #include <thread>
 #include <atomic>
 
 static std::atomic<bool> running(false);
+
+version_t* get_version (void){
+    return nullptr;
+}
 
 void* mock_create(void)
 {
@@ -17,7 +22,7 @@ bool mock_destroy(void* runtime)
 {
     // The plugin_interface_t object is statically allocated, so we don't free it
     // Just clean up any resources if needed
-    return false;
+    return true;
 }
 
 bool mock_init_sensors(void* runtime)
@@ -26,22 +31,15 @@ bool mock_init_sensors(void* runtime)
     // The plugin manager will store these in runtime->sensors
     // todo
 
-    return false;
+    return true;
 }
-bool mock_init_actors(void* runtime)
-{
-    // Allocate actors and return them
-    // The plugin manager will store these in runtime->actors
-    // todo
 
-    return false;
-}
 bool mock_finit(void* runtime)
 {
     // Free sensors and actors from runtime->sensors and runtime->actors
     // todo
 
-    return false;
+    return true;
 }
 
 void* mock_run(void* runtime)
@@ -62,35 +60,21 @@ void* mock_run(void* runtime)
     return nullptr;
 }
 
-void* mock_configurator(void* config)
+void* mock_configurator(void* configPtr)
 {
-    // This plugin doesn't need to parse YAML config
-    // It just returns nullptr as the config
-    (void)config; // Suppress unused parameter warning
-    return nullptr;
-}
+    YAML::Node *yaml = static_cast<YAML::Node *>(configPtr);
+    YAML::Node &config = *yaml;
 
-bool mock_free_config(void* config)
-{
-    // Nothing to free since we return nullptr
-    // todo
-    return false;
+    return yaml;
 }
 
 extern "C" plugin_interface_t plugin =
 {
-    1, // version
+    get_version,
     mock_create,
     mock_destroy,
     mock_init_sensors,  // init_sensors function
-    mock_init_actors,   // init_actors function
     mock_finit,
-    nullptr,
-    nullptr,
-    mock_run,           // run function    
-    nullptr, // req
-    nullptr, // res
+    mock_run,           // run function
     mock_configurator,   // configurator function
-    mock_free_config,   // free_config function
 };
-

@@ -1,0 +1,12 @@
+# SPDX-FileCopyrightText: 2026 SEANERGYS Partners <https://seanergys.eu>
+#
+# SPDX-License-Identifier: EUPL-1.2
+
+seanerbus:
+  url: seanerbroker://10.42.0.69:5398
+
+plugins:
+  - path: /home/di93zad/seanergys/tc_test_1126/install/lib64/telemetry_collector/plugins/snmp.so
+    config: /home/di93zad/seanergys/tc_test_1126/tests/plugins/snmp/test1/snmp.yaml
+    uuid: e94e6e91-a83d-4e04-a147-aab3860d0cd9
+    name: snmp

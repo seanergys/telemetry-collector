@@ -1,0 +1,5 @@
+sensor_groups:
+  no_ids:
+    sensors:
+      - unit: first
+      - unit: second

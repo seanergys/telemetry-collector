@@ -3,9 +3,17 @@
 # SPDX-License-Identifier: EUPL-1.2
 
 seanerbus:
-  url: 10.42.0.69:5398
+  url: seanerbroker://10.42.0.69:5398
+
+# Log currently loaded plugins at info level at this interval (milliseconds).
+# Set to 0 to disable periodic reporting.
+plugin_status_interval_ms: 1000
 
 plugins:
+  - path: @TC_PLUGIN_DIR@/mock.so
+    config: @TC_CONFIG_DIR@/mock.yaml
+    uuid: e94e6e91-a83d-4e04-a147-aab3860d0cd2
+    name: mock
   - path: @TC_PLUGIN_DIR@/sysfs.so
     config: @TC_CONFIG_DIR@/sysfs.yaml
     uuid: e94e6e91-a83d-4e04-a147-aab3860d0cd7

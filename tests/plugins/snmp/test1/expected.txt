@@ -1,0 +1,6 @@
+2026-11-23 11:37:48.568 [telemetry-collector] [30097] [info] Initializing the plugin: e94e6e91-a83d-4e04-a147-aab3860d0cd9
+2026-11-23 11:37:48.596 [telemetry-collector::snmp] [30097] [info] Registering sensor {}: hostname=beast2,metric=sensor1
+2026-11-23 11:37:48.597 [telemetry-collector] [30097] [info] Starting the plugin: e94e6e91-a83d-4e04-a147-aab3860d0cd9
+2026-11-23 11:37:48.605 [telemetry-collector::snmp] [30100] [debug] [41c3d210-a49f-4422-8fe8-26ca480d0e1f] value=387, timestamp=1795430268605688873
+2026-11-23 11:37:50.599 [telemetry-collector::snmp] [30100] [debug] [41c3d210-a49f-4422-8fe8-26ca480d0e1f] value=387, timestamp=1795430270599833799
+2026-11-23 11:37:52.600 [telemetry-collector::snmp] [30100] [debug] [41c3d210-a49f-4422-8fe8-26ca480d0e1f] value=387, timestamp=1795430272600009838

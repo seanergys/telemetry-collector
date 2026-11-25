@@ -7,6 +7,8 @@ cmake_minimum_required(VERSION 3.13)
 project(telemetry_collector VERSION 0.1
         DESCRIPTION "SEANERGYS Telemetry Collector" LANGUAGES CXX)
 
+include(CTest)
+
 list(PREPEND CMAKE_MODULE_PATH "${PROJECT_SOURCE_DIR}/cmake")
 
 # ============================================================================
@@ -98,11 +100,13 @@ foreach(_variableName ${_variableNames})
 endforeach()
 
 target_link_libraries(
-  telemetry_collector PRIVATE PkgConfig::SEANERBUS yaml-cpp spdlog::spdlog
+  telemetry_collector PRIVATE PkgConfig::SEANERBUS yaml-cpp::yaml-cpp spdlog::spdlog
                               ${CMAKE_DL_LIBS})
 
 set_target_properties(telemetry_collector
-                      PROPERTIES BUILD_RPATH "${SEANERBUS_LIBRARY_DIRS}")
+                      PROPERTIES
+                        BUILD_RPATH "${SEANERBUS_LIBRARY_DIRS}"
+                        INSTALL_RPATH_USE_LINK_PATH TRUE)
 
 target_compile_definitions(telemetry_collector PUBLIC SPDLOG_FMT_EXTERNAL)
 
@@ -124,7 +128,11 @@ foreach(plugin IN LISTS SELECTED_PLUGINS)
                                        # into common?
   )
 
-  set_target_properties("${plugin}" PROPERTIES PREFIX "")
+  set_target_properties(
+    "${plugin}"
+    PROPERTIES
+      PREFIX ""
+      INSTALL_RPATH_USE_LINK_PATH TRUE)
 
   target_compile_definitions("${plugin}" PUBLIC SPDLOG_FMT_EXTERNAL)
 
@@ -136,14 +144,46 @@ foreach(plugin IN LISTS SELECTED_PLUGINS)
 
   plugin_get_dependencies("${plugin}" plugin_dependencies)
 
-  target_link_libraries("${plugin}" PRIVATE yaml-cpp spdlog::spdlog
-                                            PkgConfig::SEANERBUS)
+  target_link_libraries("${plugin}"
+                        PRIVATE yaml-cpp::yaml-cpp
+                                spdlog::spdlog
+                                PkgConfig::SEANERBUS
+                                PkgConfig::UUID)
 
   foreach(dep IN LISTS plugin_dependencies)
     target_link_libraries("${plugin}" PRIVATE "${dep}::${dep}")
   endforeach()
 
 endforeach()
+
+# ============================================================================
+# Test groups
+# ============================================================================
+
+option(TC_BUILD_PLUGIN_MANAGER_TESTS "Build PluginManager tests" ON)
+option(TC_BUILD_PLUGIN_CONFIGURATION_TESTS "Build plugin configuration tests" ON)
+option(TC_BUILD_PLUGIN_TESTS "Build plugin tests" OFF)
+
+if(BUILD_TESTING AND
+   (TC_BUILD_PLUGIN_MANAGER_TESTS OR TC_BUILD_PLUGIN_CONFIGURATION_TESTS))
+  find_package(GTest QUIET)
+
+  if(GTest_FOUND)
+    include(GoogleTest)
+
+    if(TARGET GTest::gtest)
+      set(TELEMETRY_COLLECTOR_GTEST_TARGET GTest::gtest)
+    else()
+      set(TELEMETRY_COLLECTOR_GTEST_TARGET GTest::GTest)
+    endif()
+  else()
+    message(STATUS "GTest not found; GoogleTest groups will not be built")
+  endif()
+endif()
+
+if(BUILD_TESTING)
+  add_subdirectory(tests)
+endif()
 
 # ============================================================================
 # Installation
@@ -157,7 +197,7 @@ set(TC_PLUGIN_DIR "${CMAKE_INSTALL_FULL_LIBDIR}/telemetry_collector/plugins")
 
 option(TC_CONFIG_OVERWRITE "Overwrite existing configs during install" OFF)
 if(DEFINED CACHE{TC_CONFIG_OVERWRITE})
-  set(TC_CONFIG_OVERWRITE ${TC_CONFIG_OVERWRITE}) 
+  set(TC_CONFIG_OVERWRITE ${TC_CONFIG_OVERWRITE})
   unset(TC_CONFIG_OVERWRITE CACHE) # prevent cache
 endif()
 

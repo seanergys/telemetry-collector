@@ -1,0 +1,35 @@
+# SPDX-FileCopyrightText: 2026 SEANERGYS Partners <https://seanergys.eu>
+#
+# SPDX-License-Identifier: EUPL-1.2
+
+name: sysfs
+uuid: e94e6e91-a83d-4e04-a147-aab3860d0cxx
+log_level: DEBUG
+
+sensor_templates:
+  loadavg:
+    interval_ms: 2000
+    unit: "%"
+    path: /proc/loadavg1 # for testing
+    # nameserver_parts
+    #   hostname: abc
+    #   rack: 1
+
+sensor_groups:
+  loadavg:
+    path: /proc/loadavg
+    # add different intervals
+    topic: loadavg #  group level    
+    uuid: 3bc3d210-a49f-4422-8fe8-26ca480d0e1f # batching -> true
+    template: loadavg
+
+    sensors:
+      - uuid: 4bc3d210-a49f-4422-8fe8-26ca480d0e1f
+        topic: load_1min
+        description: "load 1 min"
+        filter: '^(\d+\.\d+)'
+        nameserver_parts:
+          metric: sensor1
+          #hostname : abc
+          
+       

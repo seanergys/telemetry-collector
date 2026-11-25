@@ -1,6 +1,6 @@
 variables:
   SEANERBUS_COMMIT:
-    value: "3075f14aa9b75ac8020d8a4c0dd09f7dae3c251d"
+    value: "4b69c4e8ffc11cbac85f1d376675e1e073bca68f"
     description: "seanerbus main commit"
   SCHEMA_COMMIT:
     value: "4bfb120b8c9c55c60abd326fe9b759e5d33cc939"
@@ -14,18 +14,19 @@ stages:
   - pkgdeps
   - build
   - test
+  - report
 
 pkgdeps:
   image: debian:testing-slim
   stage: pkgdeps
-  script:    
+  script:
     - ls
     - pwd
-    - apt-get update && apt-get install -y git cmake capnproto libcapnp-dev build-essential libyaml-cpp-dev snmp snmpd libsnmp-dev  catch2 libcatch2-dev pkg-config  file uuid-dev
+    - &install_build_dependencies apt-get update && apt-get install -y git cmake capnproto libcapnp-dev build-essential libyaml-cpp-dev snmp snmpd libsnmp-dev catch2 libcatch2-dev libgtest-dev pkg-config pkgconf file uuid-dev python3
     - rm -rf seanerbus-cpp
     - git clone https://software_token:$software_token@gitlab.seanergys.fz-juelich.de/software/seanerbus-cpp.git
     - cd seanerbus-cpp
-    - if [ -n "$SEANERBUS_COMMIT" ]; then git checkout $SEANERBUS_COMMIT; fi
+    - if [ -n "$SEANERBUS_COMMIT" ]; then git checkout "$SEANERBUS_COMMIT"; fi
     - git clone https://software_token:$software_token@gitlab.seanergys.fz-juelich.de/software/seanerbus-msg.git schemas
     - if [ -n "$SCHEMA_COMMIT" ]; then cd schemas && git checkout $SCHEMA_COMMIT && cd ..; fi
     - git clone --branch 12.2.0 --depth 1 https://github.com/fmtlib/fmt.git lib/fmt
@@ -42,32 +43,141 @@ pkgdeps:
 build:
   image: debian:testing-slim
   stage: build
-  needs: ["pkgdeps"]
+  needs:
+    - job: pkgdeps
+      artifacts: true
   script:
-    - ls
-    - apt-get update && apt-get install -y git cmake capnproto libcapnp-dev build-essential libyaml-cpp-dev snmp snmpd libsnmp-dev  catch2 libcatch2-dev pkg-config file uuid-dev 
-    - mkdir build && cd build
-    - cmake -DSELECTED_PLUGINS="$TC_PLUGINS" -DSEANERBUS_ROOT=../install -DCAPNP_ROOT=/usr -DCMAKE_INSTALL_PREFIX=../install  -DSPDLOG_FMT_EXTERNAL=ON -DUUID_ROOT=/usr  .. 
-    - make -j4 install  VERBOSE=1
-    - ls
+    - *install_build_dependencies
+    - |
+      cmake -S . -B build \
+        -DCMAKE_BUILD_TYPE=Release \
+        -DCMAKE_INSTALL_PREFIX="$CI_PROJECT_DIR/install" \
+        -DSELECTED_PLUGINS="$TC_PLUGINS" \
+        -DSEANERBUS_ROOT="$CI_PROJECT_DIR/install" \
+        -DCAPNP_ROOT=/usr \
+        -DBUILD_TESTING=ON \
+        -DTC_BUILD_PLUGIN_MANAGER_TESTS=ON \
+        -DTC_BUILD_PLUGIN_CONFIGURATION_TESTS=ON \
+        -DTC_BUILD_PLUGIN_TESTS=OFF
+    - cmake --build build --parallel 4
+    - cmake --install build
+    - |
+      test -x install/bin/telemetry_collector
+      old_ifs=$IFS
+      IFS=';'
+      for plugin in $TC_PLUGINS; do
+        library="$(find install -path "*/telemetry_collector/plugins/$plugin.so" -print -quit)"
+        if [ -z "$library" ]; then
+          printf 'Missing installed plugin: %s\n' "$plugin" >&2
+          exit 1
+        fi
+      done
+      IFS=$old_ifs
   artifacts:
     paths:
-      - "**/*"
+      - build/
+      - install/
+    exclude:
+      - build/**/.git/**/*
     expire_in: 1 hour
 
 
 test:
   image: debian:testing-slim
   stage: test
+  needs:
+    - job: build
+      artifacts: true
   script:
-    - cd install
-    - test -f bin/telemetry_collector|| (echo "missing bin/telemetry_collector"; exit 1)
-    - PLUGIN_INSTALL_DIR="lib/telemetry_collector/plugins" 
+    - *install_build_dependencies
     - |
-      for p in $(echo "$TC_PLUGINS" | tr ';' ' '); do
-        test -f "$PLUGIN_INSTALL_DIR/$p.so" || { echo "missing $PLUGIN_INSTALL_DIR/$p.so"; exit 1; }
-      done
+      status=0
+      cmake --build build --target run_plugin_manager_tests --parallel 4 || status=1
+      cmake --build build --target run_plugin_configuration_tests --parallel 4 || status=1
+      exit "$status"
   artifacts:
+    when: always
+    reports:
+      junit:
+        - build/test-artifacts/plugin-manager/junit.xml
+        - build/test-artifacts/plugin-configuration/junit.xml
     paths:
-      - "**/*"
-    expire_in: 1 hour
+      - build/test-artifacts/plugin-manager/
+      - build/test-artifacts/plugin-configuration/
+    expire_in: 1 week
+
+plugin_tests:
+  image: debian:testing-slim
+  stage: test
+  needs:
+    - job: build
+      artifacts: true
+  variables:
+    SEANERBUS_BROKER_COMMIT: "e7b26f03bb92245555d8369202f3097a600d93bd"
+    SEANERBUS_NAMING_COMMIT: "9a87240dcec0911be90662d8f2e1a30639649790"
+  script:
+    - mkdir -p build/test-artifacts/plugin-tests
+    - apt-get update && apt-get install -y ca-certificates git cmake cargo rustc capnproto libcapnp-dev build-essential pkg-config libyaml-cpp-dev libsnmp-dev uuid-dev snmp snmpd python3
+    - |
+      (
+        set -eu
+        : "${software_token:?Set the GitLab software_token variable}"
+        gitlab=https://gitlab.seanergys.fz-juelich.de
+        export GIT_CONFIG_COUNT=2
+        export GIT_CONFIG_KEY_0="url.$gitlab/.insteadOf"
+        export GIT_CONFIG_VALUE_0="git@gitlab.seanergys.fz-juelich.de:"
+        export GIT_CONFIG_KEY_1="http.$gitlab/.extraHeader"
+        export GIT_CONFIG_VALUE_1="Authorization: Basic $(printf 'software_token:%s' "$software_token" | base64 -w0)"
+        git clone --no-checkout "$gitlab/software/seanerbroker.git" build/plugin-test-broker
+        git -C build/plugin-test-broker checkout --detach "$SEANERBUS_BROKER_COMMIT"
+        git -C build/plugin-test-broker submodule update --init --recursive
+        git clone --no-checkout "$gitlab/software/seanerbus-naming-service.git" build/plugin-test-naming
+        git -C build/plugin-test-naming checkout --detach "$SEANERBUS_NAMING_COMMIT"
+        git -C build/plugin-test-naming submodule update --init --recursive
+      )
+    - |
+      export CARGO_TARGET_DIR="$CI_PROJECT_DIR/build/plugin-test-rust"
+      logs=build/test-artifacts/plugin-tests
+      cargo build --locked --manifest-path build/plugin-test-broker/Cargo.toml \
+        > "$logs/broker-build.log" 2>&1 || { cat "$logs/broker-build.log"; exit 1; }
+      cargo build --locked --manifest-path build/plugin-test-naming/Cargo.toml --bin naming_server \
+        > "$logs/naming-build.log" 2>&1 || { cat "$logs/naming-build.log"; exit 1; }
+      test -x "$CARGO_TARGET_DIR/debug/seanerbroker"
+      test -x "$CARGO_TARGET_DIR/debug/naming_server"
+      test -s build/plugin-test-naming/services.json
+      export LD_LIBRARY_PATH="$CI_PROJECT_DIR/install/lib:$CI_PROJECT_DIR/install/lib64${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
+      ulimit -c 0
+      cmake -S . -B build \
+        -DBUILD_TESTING=ON \
+        -DTC_BUILD_PLUGIN_MANAGER_TESTS=OFF \
+        -DTC_BUILD_PLUGIN_CONFIGURATION_TESTS=OFF \
+        -DTC_BUILD_PLUGIN_TESTS=ON \
+        -DSEANERBUS_ROOT="$CI_PROJECT_DIR/install" \
+        -DTC_PLUGIN_TEST_INSTALL_PREFIX="$CI_PROJECT_DIR/install" \
+        -DTC_PLUGIN_TEST_BROKER="$CARGO_TARGET_DIR/debug/seanerbroker" \
+        -DTC_PLUGIN_TEST_NAMING="$CARGO_TARGET_DIR/debug/naming_server" \
+        -DTC_PLUGIN_TEST_NAMING_CONFIG="$CI_PROJECT_DIR/build/plugin-test-naming/services.json"
+      cmake --build build --target run_plugin_tests --parallel 4
+  artifacts:
+    when: always
+    reports:
+      junit: build/test-artifacts/plugin-tests/junit.xml
+    paths:
+      - build/test-artifacts/plugin-tests/
+    expire_in: 1 week
+
+test_report:
+  image: debian:testing-slim
+  stage: report
+  when: always
+  dependencies:
+    - test
+    - plugin_tests
+  script:
+    - apt-get update && apt-get install -y cmake
+    - cmake -DREPORT_ROOT=build/test-artifacts -DREQUIRE_ALL_REPORTS=ON -P tests/reporting/write_report_index.cmake
+  artifacts:
+    when: always
+    paths:
+      - build/test-artifacts/
+    expire_in: 1 week

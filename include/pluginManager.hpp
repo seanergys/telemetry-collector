@@ -5,9 +5,13 @@
 #pragma once
 
 #include "logger.hpp"
+#include "config.hpp"
 #include "plugin.hpp"
 
+#include <chrono>
+#include <condition_variable>
 #include <map>
+#include <mutex>
 #include <string>
 #include <thread>
 #include <vector>
@@ -21,10 +25,14 @@ public:
     bool load_plugin(
         const char* path,
         const char* configFile,
-        const char* uuid);
+        const char* uuid,
+        const char* seanerbusUrl);
 
     bool load_plugin(
         const char* uuid);
+
+    bool load_collector_config(const char* filename);
+    const telemetry_collector_config_t& collector_config() const;
 
     bool start_plugin(
         const char* uuid);
@@ -60,10 +68,18 @@ public:
     std::vector<std::string> get_loaded_plugins() const;
 
     void print_loaded_plugins() const;
+    bool start_loaded_plugin_reporting();
+    void stop_loaded_plugin_reporting();
 
 private:
     std::map<std::string, runtime_t> runtimes; // uuid -> runtime_t
+    mutable std::mutex runtimesMutex;
     std::map<std::string, std::thread> threads; // uuid -> runtime_t
+    std::mutex statusReporterMutex;
+    std::condition_variable statusReporterCondition;
+    bool statusReporterRunning = false;
+    std::thread statusReporterThread;
+    std::optional<telemetry_collector_config_t> telemetryCollectorConfig;
     runtime_t* find_runtime(
         const char* uuid);
     Logger logging; 

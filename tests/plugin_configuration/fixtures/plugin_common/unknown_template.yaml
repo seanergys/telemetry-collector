@@ -1,0 +1,9 @@
+sensor_templates: {}
+
+sensor_groups:
+  fallback:
+    template: unavailable
+    sensors:
+      - uuid: 22222222-2222-4222-8222-222222222222
+        unit: celsius
+        topic: explicit topic

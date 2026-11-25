@@ -3,7 +3,6 @@
 // SPDX-License-Identifier: EUPL-1.2
 
 #include "logger.hpp"
-#include "config.hpp"
 #include "pluginManager.hpp"
 
 #include <atomic>
@@ -11,6 +10,7 @@
 #include <csignal>
 #include <iostream>
 #include <memory>
+#include <string>
 #include <thread>
 #include <vector>
 
@@ -22,19 +22,8 @@ std::shared_ptr<spdlog::logger> logger;
 PluginManager manager;
 
 void signal_handler(
-    int signal)
+    int)
 {
-    logger->error("Received signal {}, shutting down...", signal);
-
-    logger->info("Stopping plugins");
-    manager.stop_plugin();
-
-    logger->info("Finalizing plugins");
-    manager.finit_plugin();
-
-    logger->info("Unloading plugins");
-    manager.unload_plugin();
-
     running = false;
 }
 
@@ -60,37 +49,62 @@ int main(
         SIGTERM,
         signal_handler);
 
-    auto plugin_configs =
-        load_tc_config(argv[1], logger);
+    if (!manager.load_collector_config(argv[1]))
+    {
+        return 1;
+    }
+
+    const auto &plugin_configs =
+        manager.collector_config().plugins;
+
+    std::vector<std::string> loaded_plugins;
+    std::vector<std::string> initialized_plugins;
+    std::vector<std::string> running_plugins;
 
     for (const auto &conf : plugin_configs)
     {
         try
         {
-	    logger->info("Loading {}, {}, {}, {}", conf.path, conf.config, conf.uuid, conf.name);
+            logger->info("Loading {}, {}, {}, {}", conf.path, conf.config, conf.uuid, conf.name);
 
-            if (!manager.load_plugin(conf.path, conf.config, conf.uuid))
+            if (!manager.load_plugin(
+                    conf.path,
+                    conf.config,
+                    conf.uuid,
+                    conf.seanerbus_url.c_str()))
             {
                 logger->error("Failed to load {}, {}, {}, {}", conf.path, conf.config, conf.uuid, conf.name);
+                continue;
             }
+            loaded_plugins.emplace_back(conf.uuid);
 
             logger->info("Initializing the plugin: {}", conf.uuid);
             if (!manager.init_plugin(conf.uuid))
             {
                 logger->error("Failed to initialize plugin: {}", conf.uuid);
+                continue;
             }
+            initialized_plugins.emplace_back(conf.uuid);
 
             logger->info("Starting the plugin: {}", conf.uuid);
             if (!manager.start_plugin(conf.uuid))
             {
                 logger->error("Failed to start plugin: {}", conf.uuid);
+                continue;
             }
+            running_plugins.emplace_back(conf.uuid);
         }
         catch (const std::exception &e)
         {
-            logger->error("Exception: {}", e.what());
+            logger->error(
+                "Plugin '{}' ({}) failed: {}",
+                conf.name,
+                conf.uuid,
+                e.what());
         }
     }
+
+    manager.start_loaded_plugin_reporting();
 
     while (running)
     {
@@ -98,16 +112,29 @@ int main(
             std::chrono::seconds(1));
     }
 
-    for (const auto &conf : plugin_configs)
+    manager.stop_loaded_plugin_reporting();
+
+    for (const auto &uuid : running_plugins)
     {
-        logger->info("Stopping plugin: {}", conf.uuid);
-        manager.stop_plugin(conf.uuid);
+        logger->info("Stopping plugin: {}", uuid);
+        manager.stop_plugin(uuid.c_str());
+    }
 
-        logger->info("Finalizing plugin: {}", conf.uuid);
-        manager.finit_plugin(conf.uuid);
+    for (const auto &uuid : initialized_plugins)
+    {
+        logger->info("Finalizing plugin: {}", uuid);
+        manager.finit_plugin(uuid.c_str());
+    }
 
-        logger->info("Unloading plugin: {}", conf.uuid);
-        manager.unload_plugin(conf.uuid);
+    for (const auto &uuid : loaded_plugins)
+    {
+        if (!manager.is_plugin_loaded(uuid.c_str()))
+        {
+            continue;
+        }
+
+        logger->info("Unloading plugin: {}", uuid);
+        manager.unload_plugin(uuid.c_str());
     }
 
     return 0;
