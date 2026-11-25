@@ -11,6 +11,7 @@ SPDX-License-Identifier: EUPL-1.2
 | [Project overview](../README.md) | Architecture, the source tree, implemented plugins, and CI reports. |
 | [Installation](../INSTALL.md) | Installing with Spack or building with CMake. |
 | [Running and testing locally](../RUN.md) | Building, running the services manually, and starting the test suites. |
+| [Plugin API](plugin_api.md) | Exported plugin functions, runtime state, and lifecycle expectations. |
 | [Configuration reference](../config/README.md) | Collector and plugin YAML parameters, defaults, and inheritance. |
 | [Test directory guide](../tests/README.md) | Test suites, fixtures, and report locations. |
 | [Plugin manager tests](../tests/plugin_manager/plugin_manager_tests.md) | Plugin loading, lifecycle, and status reporting cases. |

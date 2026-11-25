@@ -43,8 +43,9 @@ signal such as `SIGTERM` or `SIGINT`, then begins shutting them down.
 
 The collector reads a main YAML configuration with the broker URL and a list
 of plugin libraries and their configuration files. The plugin manager validates
-each shared library's exported interface and handles loading, initialization,
-execution, and cleanup. The plugins use common code for sensor
+each shared library's [exported plugin interface](docs/plugin_api.md) and
+handles loading, initialization, execution, and cleanup. The plugins use
+common code for sensor
 configuration, periodic scheduling, and publishing `TimeValueV1` messages.
 Where applicable, they use the SeanerBUS naming service to register or resolve
 sensor names.
@@ -57,6 +58,7 @@ sensor names.
 | [`include/`](include/) | Plugin interface, runtime and sensor types, and collector headers. |
 | [`plugins/`](plugins/) | Plugin implementations and shared helpers in `plugin_common.hpp`. |
 | [`config/`](config/README.md) | Main configuration template and example YAML for each implemented plugin. |
+| [`docs/`](docs/README.md) | Documentation index and plugin API reference. |
 | [`cmake/`](cmake/) | Plugin discovery, dependency resolution, and build support. |
 | [`tests/`](tests/README.md) | Plugin manager tests, configuration tests, and plugin tests that run against locally deployed services and componets. |
 
