@@ -6,13 +6,12 @@
 
 #include "plugin.hpp"
 
+version_t* get_version (void);
 void* mock_create(void);
 bool  mock_destroy(void* runtime);
 bool mock_init_sensors(void* runtime);
-bool mock_init_actors(void* runtime);
 bool mock_finit(void* runtime);
 void* mock_run(void* runtime);
 void* mock_configurator(void* config);
-bool mock_free_config(void* config);
 
 extern "C" plugin_interface_t plugin;

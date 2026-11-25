@@ -1,0 +1,10 @@
+# SPDX-FileCopyrightText: 2026 SEANERGYS Partners <https://seanergys.eu>
+#
+# SPDX-License-Identifier: EUPL-1.2
+
+name: mock
+uuid: e94e6e91-a83d-4e04-a147-aab3860d0cd9
+log_level: DEBUG
+
+sensor_groups:
+  sensors:

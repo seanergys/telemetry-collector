@@ -1,0 +1,25 @@
+sensor_templates:
+  group_defaults:
+    interval_ms: 1000
+    unit: group template unit
+    topic: group template topic
+    nameserver_parts:
+      group: group value
+      shared: group template
+  sensor_defaults:
+    interval_ms: 500
+    unit: sensor template unit
+    topic: sensor template topic
+    factor: 3.5
+    nameserver_parts:
+      shared: sensor template
+
+sensor_groups:
+  example:
+    template: group_defaults
+    unit: group unit
+    topic: group topic
+    sensors:
+      - uuid: 33333333-3333-4333-8333-333333333333
+        template: sensor_defaults
+        topic: sensor override topic

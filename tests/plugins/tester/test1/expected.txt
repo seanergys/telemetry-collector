@@ -1,0 +1,7 @@
+2026-11-23 11:17:32.933 [telemetry-collector] [341702] [info] Starting the plugin: e94e6e91-a83d-4e04-a147-aab3860d0cd9
+2026-11-23 11:17:32.934 [telemetry-collector::tester] [341705] [debug] [7bc3d210-a49f-4422-8fe8-26ca480d0e1a] value=1, timestamp=1795429052934183028
+2026-11-23 11:17:33.933 [telemetry-collector::tester] [341705] [debug] [7bc3d210-a49f-4422-8fe8-26ca480d0e1a] value=2, timestamp=1795429053933359723
+2026-11-23 11:17:34.933 [telemetry-collector::tester] [341705] [debug] [7bc3d210-a49f-4422-8fe8-26ca480d0e1a] value=3, timestamp=1795429054933327261
+2026-11-23 11:17:35.933 [telemetry-collector::tester] [341705] [debug] [7bc3d210-a49f-4422-8fe8-26ca480d0e1a] value=4, timestamp=1795429055933334820
+2026-11-23 11:17:36.933 [telemetry-collector::tester] [341705] [debug] [7bc3d210-a49f-4422-8fe8-26ca480d0e1a] value=5, timestamp=1795429056933338734
+2026-11-23 11:17:37.933 [telemetry-collector::tester] [341705] [debug] [7bc3d210-a49f-4422-8fe8-26ca480d0e1a] value=6, timestamp=1795429057933285496

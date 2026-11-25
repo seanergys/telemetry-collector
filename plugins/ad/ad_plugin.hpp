@@ -20,27 +20,16 @@
 void *ad_create(void);
 bool ad_destroy(void *runtime);
 bool ad_init_sensors(void *runtime);
-bool ad_init_actors(void *runtime);
 bool ad_finit(void *runtime);
 void *ad_run(void *runtime);
 
 /* config loading */
 void *ad_configurator(void *config);
-bool ad_free_config(void *config);
-static std::optional<spdlog::level::level_enum> parse_level(std::string s);
 
-typedef struct sensor_attribute
+typedef struct sensor_attribute : generic_sensor_attribute_t
 {
-    char *uuid;
-    char *topic;
-    std::chrono::milliseconds interval_ms;
-    char *description;
-    char *unit;
     char *connection_uuid;
-    char *filter;
-    double factor = 1;
-    double offset = 0;
-    std::map<std::string, std::string> nameserver_parts;
+    std::string broker_url;
 
 } sensor_attribute_t;
 

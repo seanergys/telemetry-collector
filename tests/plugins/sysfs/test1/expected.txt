@@ -1,0 +1,10 @@
+2026-11-23 11:33:53.056 [telemetry-collector] [348857] [info] Initializing the plugin: e94e6e91-a83d-4e04-a147-aab3860d0cd9
+2026-11-23 11:33:53.057 [telemetry-collector::sysfs] [348857] [debug] Resolving sensor hostname=wolpy09,metric=sensor1
+2026-11-23 11:33:53.058 [telemetry-collector::sysfs] [348857] [debug] Could not resolve sensor: no req/res interface available under this entity!
+2026-11-23 11:33:53.060 [telemetry-collector] [348857] [info] Starting the plugin: e94e6e91-a83d-4e04-a147-aab3860d0cd9
+2026-11-23 11:33:53.060 [telemetry-collector::sysfs] [348857] [debug] Could not register sensor hostname=wolpy09,metric=sensor1: no req/res interface available under this entity!
+2026-11-23 11:33:53.060 [telemetry-collector::sysfs] [348857] [debug] End of sysfs_init_sensors, total sensors configured: 1
+2026-11-23 11:33:53.061 [telemetry-collector::sysfs] [348860] [debug] sensor path /proc/loadavg value 7.53 factor 1 offset 0
+2026-11-23 11:33:53.061 [telemetry-collector::sysfs] [348860] [debug] [4bc3d210-a49f-4422-8fe8-26ca480d0e1f] value=7.53, timestamp=1795430033061346180
+2026-11-23 11:33:55.060 [telemetry-collector::sysfs] [348860] [debug] sensor path /proc/loadavg value 7.53 factor 1 offset 0
+2026-11-23 11:33:55.060 [telemetry-collector::sysfs] [348860] [debug] [4bc3d210-a49f-4422-8fe8-26ca480d0e1f] value=7.53, timestamp=1795430035060513615

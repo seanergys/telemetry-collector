@@ -1,0 +1,3 @@
+sensor_groups:
+  empty_group:
+    topic: group without sensors

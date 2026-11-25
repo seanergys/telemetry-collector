@@ -6,6 +6,7 @@
 
 #include <chrono>
 #include <cstdint>
+#include <map>
 #include <memory>
 #include <string>
 #include <unordered_map>
@@ -20,30 +21,17 @@
 void *sysfs_create(void);
 bool sysfs_destroy(void *runtime);
 bool sysfs_init_sensors(void *runtime);
-bool sysfs_init_actors(void *runtime);
 bool sysfs_finit(void *runtime);
 void *sysfs_run(void *runtime);
 
 /* config loading */
 void *sysfs_configurator(void *config);
-bool sysfs_free_config(void *config);
 
-static std::optional<spdlog::level::level_enum> parse_level(std::string s);
-
-typedef struct sensor_attribute
+typedef struct sensor_attribute : generic_sensor_attribute_t
 {
-    char *uuid;
     bool has_been_resolved = false;
-    char *topic;
-    std::chrono::milliseconds interval_ms;
-    char *description;
     char *hostname;
-    char *unit;
     char *path;
-    char *filter;
-    double factor = 1;
-    double offset = 0;
-    std::map<std::string, std::string> nameserver_parts;
 } sensor_attribute_t;
 
 struct SensorReading
@@ -52,7 +40,7 @@ struct SensorReading
     double value = 0.0;
 };
 
-std::list<sensor_attribute_t *> configs;
+std::map<std::string, sensor_attribute_t *> configs;
 std::map<std::string, sensor_t *> sensors; // uuid -> sensors
 
 /* exported plugin descriptor */

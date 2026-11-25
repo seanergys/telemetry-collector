@@ -4,6 +4,8 @@
 
 #pragma once
 
+#include <chrono>
+#include <optional>
 #include <string>
 #include <utility>
 #include <vector>
@@ -12,4 +14,12 @@
 #include "logger.hpp"
 #include "plugin.hpp"
 
-std::vector<config_t> load_tc_config(const char* filename, std::shared_ptr<spdlog::logger> logger);
+struct telemetry_collector_config_t
+{
+    std::vector<config_t> plugins;
+    std::chrono::milliseconds plugin_status_interval;
+};
+
+std::optional<telemetry_collector_config_t> load_tc_config(
+    const char* filename,
+    std::shared_ptr<spdlog::logger> logger);

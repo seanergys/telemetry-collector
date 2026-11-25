@@ -20,26 +20,14 @@
 void *tester_create(void);
 bool tester_destroy(void *runtime);
 bool tester_init_sensors(void *runtime);
-bool tester_init_actors(void *runtime);
 bool tester_finit(void *runtime);
 void *tester_run(void *runtime);
 
 /* config loading */
 void *tester_configurator(void *config);
-bool tester_free_config(void *config);
-static std::optional<spdlog::level::level_enum> parse_level(std::string s);
 
-typedef struct sensor_attribute
+typedef struct sensor_attribute : generic_sensor_attribute_t
 {
-    char *uuid;
-    char *topic;
-    std::chrono::milliseconds interval_ms;
-    char *description;
-    char *unit;
-    char *filter;
-    double factor = 1;
-    double offset = 0;
-    std::map<std::string, std::string> nameserver_parts;
 } sensor_attribute_t;
 
 struct SensorReading
