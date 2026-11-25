@@ -6,6 +6,22 @@ SPDX-License-Identifier: EUPL-1.2
 
 # Telemetry Collector
 
+[![GitLab CI and test pipeline status on main](https://gitlab.seanergys.fz-juelich.de/software/telemetry-collector/badges/main/pipeline.svg?key_text=CI%20%26%20tests)](https://gitlab.seanergys.fz-juelich.de/software/telemetry-collector/-/pipelines?ref=main)
+[![C++20](https://img.shields.io/badge/C%2B%2B-20-00599C)](#source-tree)
+[![Documentation](https://img.shields.io/badge/docs-guides-2563EB)](#installation-and-usage)
+[![License EUPL-1.2](https://img.shields.io/badge/license-EUPL--1.2-2563EB)](LICENSE)
+
+[![Build with CMake](https://img.shields.io/badge/build-CMake-064F8C)](INSTALL.md#install-manually-with-cmake)
+[![Install with Spack](https://img.shields.io/badge/install-Spack-166534)](INSTALL.md#install-with-spack)
+[![Test reports](https://img.shields.io/badge/tests-reports-7C3AED)](#test-reports)
+[![Runs on Linux](https://img.shields.io/badge/platform-Linux-334155)](INSTALL.md#prerequisites)
+[![Publishes through SeanerBUS](https://img.shields.io/badge/transport-SeanerBUS-0E7490)](RUN.md)
+
+[Install](INSTALL.md) · [Run locally](RUN.md) · [Plugins](#implemented-plugins) ·
+[Test reports](#test-reports) · [Contributing](CONTRIBUTING.md)
+
+**Topics** `telemetry` · `monitoring` · `linux` · `snmp` · `seanerbus` · `cpp` · `cmake` · `spack`
+
 The SEANERGYS Telemetry Collector is a C++ service that collects timestamped
 sensor readings and publishes them to a SeanerBUS broker. Plugins supply the
 readings from sources such as local Linux attributes and network devices.
