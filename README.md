@@ -23,39 +23,39 @@ SPDX-License-Identifier: EUPL-1.2
 
 **Topics** `telemetry` · `monitoring` · `linux` · `snmp` · `seanerbus` · `cpp` · `cmake` · `spack`
 
-The SEANERGYS Telemetry Collector is a C++ service that collects timestamped
-sensor readings and publishes them to a SeanerBUS broker. Plugins supply the
+The SEANERGYS Telemetry Collector (TC) is a C++ service that collects timestamped
+sensor readings and publishes them to a SeanerBroker. Plugins supply the
 readings from sources such as local Linux attributes and network devices.
-Subscribers receive numeric values on the SeanerBUS entity identified by
+Subscribers receive numeric values on the SeanerBroker entity identified by
 each sensor's UUID.
 
 ## Architecture
 
-The collector implements the modular, extensible plugin design described
+The TC implements the modular, extensible plugin design described
 in SEANERGYS deliverable D2.1. It runs close to the data sources, for example
 on compute nodes or facility frontends, and manages the lifecycle of the
 telemetry plugins deployed there.
 
-The collector is designed to run continuously as a background service.
+The TC is designed to run continuously as a background service.
 On Linux, a service manager such as `systemd` can supervise the process.
-The collector keeps its plugins active until it receives a termination
+The TC keeps its plugins active until it receives a termination
 signal such as `SIGTERM` or `SIGINT`, then begins shutting them down.
 
-The collector reads a main YAML configuration with the broker URL and a list
+The TC reads a main YAML configuration with the SeanerBroker URL and a list
 of plugin libraries and their configuration files. The plugin manager validates
 each shared library's [exported plugin interface](docs/plugin_api.md) and
 handles loading, initialization, execution, and cleanup. The plugins use
 common code for sensor
 configuration, periodic scheduling, and publishing `TimeValueV1` messages.
-Where applicable, they use the SeanerBUS naming service to register or resolve
+Where applicable, they use the SeanerBroker naming service to register or resolve
 sensor names.
 
 ## Source tree
 
 | Directory | Contents |
 | --- | --- |
-| [`src/`](src/) | Collector entry point, YAML configuration reader, plugin manager, and logging implementation. |
-| [`include/`](include/) | Plugin interface, runtime and sensor types, and collector headers. |
+| [`src/`](src/) | TC entry point, YAML configuration reader, plugin manager, and logging implementation. |
+| [`include/`](include/) | Plugin interface, runtime and sensor types, and TC headers. |
 | [`plugins/`](plugins/) | Plugin implementations and shared helpers in `plugin_common.hpp`. |
 | [`config/`](config/README.md) | Main configuration template and example YAML for each implemented plugin. |
 | [`docs/`](docs/README.md) | Documentation index and plugin API reference. |
@@ -68,7 +68,7 @@ sensor names.
 | --- | --- |
 | [`sysfs`](plugins/sysfs/) | Reads numeric values from configured Linux paths, such as attributes in `/sys` or files in `/proc`. Supports extracting a value with a filter and applying a factor and offset. |
 | [`snmp`](plugins/snmp/) | Polls configured OIDs on SNMP agents and publishes numeric readings. |
-| [`ad`](plugins/ad/) | Resolves sensor entities through the SeanerBUS naming service and requests their readings through SeanerBUS. |
+| [`ad`](plugins/ad/) | Resolves sensor entities through the SeanerBroker naming service and requests their readings through SeanerBroker. |
 | [`tester`](plugins/tester/) | Generates incrementing counter values for testing the publication path without a physical sensor. |
 | [`mock`](plugins/mock/) | Provides a minimal plugin for exercising loading, configuration, and lifecycle operations. |
 
@@ -78,7 +78,7 @@ See the [configuration reference](config/README.md) for the main YAML and
 each plugin’s parameters.
 
 See the [installation guide](INSTALL.md) for the Spack and manual CMake
-workflows, and [RUN.md](RUN.md) for running the collector with SeanerBUS.
+workflows, and [RUN.md](RUN.md) for running the TC with SeanerBroker.
 
 ## Test reports
 
@@ -104,7 +104,7 @@ started for each plugin.
 
 ## Plugin process logs and YAML configs
 
-| Plugin | Telemetry collector | Naming server | SeanerBUS broker | SNMP agent | Subscriber | Configs |
+| Plugin | Telemetry collector | Naming server | SeanerBroker | SNMP agent | Subscriber | Configs |
 | --- | --- | --- | --- | --- | --- | --- |
 | Mock | [Collector](https://gitlab.seanergys.fz-juelich.de/api/v4/projects/software%2Ftelemetry-collector/jobs/artifacts/main/raw/build/test-artifacts/plugin-tests/mock/mock/collector.log?job=test_report) | [Naming](https://gitlab.seanergys.fz-juelich.de/api/v4/projects/software%2Ftelemetry-collector/jobs/artifacts/main/raw/build/test-artifacts/plugin-tests/mock/naming.log?job=test_report) | [Broker](https://gitlab.seanergys.fz-juelich.de/api/v4/projects/software%2Ftelemetry-collector/jobs/artifacts/main/raw/build/test-artifacts/plugin-tests/mock/broker.log?job=test_report) | — | — | [Collector YAML](https://gitlab.seanergys.fz-juelich.de/api/v4/projects/software%2Ftelemetry-collector/jobs/artifacts/main/raw/build/test-artifacts/plugin-tests/mock/mock/telemetry_collector.yaml?job=test_report), [Plugin YAML](https://gitlab.seanergys.fz-juelich.de/api/v4/projects/software%2Ftelemetry-collector/jobs/artifacts/main/raw/build/test-artifacts/plugin-tests/mock/mock/plugin.yaml?job=test_report) |
 | Tester | [Collector](https://gitlab.seanergys.fz-juelich.de/api/v4/projects/software%2Ftelemetry-collector/jobs/artifacts/main/raw/build/test-artifacts/plugin-tests/tester/tester/collector.log?job=test_report) | [Naming](https://gitlab.seanergys.fz-juelich.de/api/v4/projects/software%2Ftelemetry-collector/jobs/artifacts/main/raw/build/test-artifacts/plugin-tests/tester/naming.log?job=test_report) | [Broker](https://gitlab.seanergys.fz-juelich.de/api/v4/projects/software%2Ftelemetry-collector/jobs/artifacts/main/raw/build/test-artifacts/plugin-tests/tester/broker.log?job=test_report) | — | [Subscriber](https://gitlab.seanergys.fz-juelich.de/api/v4/projects/software%2Ftelemetry-collector/jobs/artifacts/main/raw/build/test-artifacts/plugin-tests/tester/tester/subscriber.log?job=test_report) | [Collector YAML](https://gitlab.seanergys.fz-juelich.de/api/v4/projects/software%2Ftelemetry-collector/jobs/artifacts/main/raw/build/test-artifacts/plugin-tests/tester/tester/telemetry_collector.yaml?job=test_report), [Plugin YAML](https://gitlab.seanergys.fz-juelich.de/api/v4/projects/software%2Ftelemetry-collector/jobs/artifacts/main/raw/build/test-artifacts/plugin-tests/tester/tester/plugin.yaml?job=test_report) |

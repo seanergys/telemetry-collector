@@ -6,10 +6,10 @@ SPDX-License-Identifier: EUPL-1.2
 
 # Telemetry Collector configuration
 
-The collector reads a main YAML file that selects the broker and plugin
-instances. Each plugin instance points to a second YAML file with its own
-settings. Installed examples are under `etc/telemetry_collector/`. See
-[RUN.md](../RUN.md) for launching the collector and services.
+The Telemetry Collector (TC) uses a primary YAML file, named `config.yaml`, to select the broker and the plugins it will use, as well as to initialize instances of those plugins. 
+Each plugin instance is linked to its own configuration file, which is a secondary YAML file (for example, `plugin_name.yaml`). 
+The installed configuration files are in the `etc/telemetry_collector/` directory. 
+See [RUN.md](../RUN.md) for launching the TC and services.
 
 ## Contents
 
@@ -23,18 +23,17 @@ settings. Installed examples are under `etc/telemetry_collector/`. See
 
 ## Global configuration — `config.yaml`
 
-CMake generates the main configuration from [`config.yaml.in`](config.yaml.in).
-It fills in the installed library and configuration paths. Copy the generated
-file to a writable location and select the entries for the plugins you built.
+CMake generates the main configuration from [`config.yaml.in`](config.yaml.in), filling in the installed library and configuration paths. It then copies the generated file to a writable location `etc/telemetry_collector/` and selects the plugins you want to build, if none are mentioned, it selects all.
+
 
 | Parameter | Type or default | Behavior |
 | --- | --- | --- |
-| `seanerbus.url` | Required non-empty string | Broker address shared by the configured plugins. Use `seanerbroker://host:port` or `host:port`. The collector prepends the scheme if it is absent. The manager supplies this URL to each plugin and replaces any `seanerbus.url` in its YAML. |
-| `plugin_status_interval_ms` | Required non-negative integer in milliseconds. The shipped file uses `1000`. | How often the collector logs which plugins are loaded at info level. Use `0` to disable these reports. |
+| `seanerbroker.url` | Required non-empty string | Broker address shared by the configured plugins. Use `seanerbroker://host:port` or `host:port`. The TC prepends the scheme if it is absent. The manager supplies this URL to each plugin and replaces any `seanerbroker.url` in its YAML. |
+| `plugin_status_interval_ms` | Required non-negative integer in milliseconds. The shipped file uses `1000`. | How often the TC logs which plugins are loaded at info level. Use `0` to disable these reports. |
 | `plugins` | Sequence of mappings | One entry per plugin instance to load at startup. Use `[]` for an empty list. |
 | `plugins[].path` | Required string | Shared library passed to the dynamic loader, such as the installed `sysfs.so`. This field selects the implementation. |
-| `plugins[].config` | Required string | Path to the plugin YAML file. Relative file paths are resolved from the collector process's working directory. |
-| `plugins[].uuid` | Required string | Unique key for the plugin instance in the manager. This is independent of the sensor UUIDs used to publish data. Loading a second instance with the same key is rejected. |
+| `plugins[].config` | Required string | Path to the plugin YAML file. Relative file paths are resolved from the TC process's working directory. |
+| `plugins[].uuid` | Required string | UUID (Universally Unique Identifier) for the plugin instance in the manager. This is independent of the sensor UUIDs used to publish data. Loading a second instance with the same key is rejected. |
 | `plugins[].name` | Required string | Human-readable plugin name used in startup and status logs. |
 
 See the [collector parser](../src/config.cpp) and
@@ -42,22 +41,31 @@ See the [collector parser](../src/config.cpp) and
 
 ## Common plugin parameters
 
-Sysfs, SNMP, and Tester use the shared parser in
-[`plugin_common.hpp`](../plugins/plugin_common.hpp). AD reuses its field
-handlers after discovering sensors. For each configured Sysfs, SNMP, or
-Tester sensor, the parser applies fields in this order:
 
-1. The group’s template.
-2. Fields directly on the group.
-3. The sensor’s template.
-4. Fields directly on the sensor.
+The plugin configuration is structured in layers: `sensors`, `sensor_groups`, and `sensor_templates`, each with its own set of attributes. 
+At lowest layer (`sensors`), it includes various sensors, each with multiple attributes and corresponding values. 
+Similar sensors are typically organized into groups, known as `sensor_groups` (i.e. mid layer), which share common attributes based on their type or function. This structure allows shared attributes to be defined at the group level.
+Additionally, group attributes can be utilized as templates through `template` (the top layer), which can be referenced within the group.
 
-Later values override earlier ones. `nameserver_parts` entries merge by key.
-If a template reference is missing or unknown, the parser continues applying
-the other layers. When a templates map exists but lacks the named entry, it
-logs a warning. For these three plugins, supply a valid `log_level` and keep
-`sensor_templates: {}` if you have no templates. The shared configurator can
-log diagnostics before the plugin initializes its logger.
+Plugins (Sysfs, SNMP, and Tester) use a shared parser called [`plugin_common.hpp`](../plugins/plugin_common.hpp). It parses in a specific order mentioned below i.e. from highest to lowest layer where lower layer attributes overrides the value from higher layer if mentioned.
+
+1. `template`
+2. `sensor_groups`
+3. `sensors`
+
+If a `template` reference is missing or unknown, the parser continues applying the other layers. 
+When a templates map exists but lacks the named entry, it logs a warning. 
+For these (Sysfs, SNMP, and Tester) plugins, a valid log_level is supplied. 
+The shared configurator can log diagnostics before the plugin initializes its logger.
+
+Each entry for `sensor_groups` and `sensors` is uniquely identified by a UUID. 
+The UUIDs in `sensor_groups` are used to identify the publication destination in seanerbroker and are intended to facilitate a future batching feature. 
+For sensors, the UUID acts as a unique identifier throughout the entire system. 
+Sensors are registered with the seanerbroker name server, which stores the UUID along with a set of descriptive attributes from `nameserver_parts`. 
+To automatically generate a UUID, leave the UUID field empty; one will be assigned when the sensor is registered.
+The parser uses the `sensor_groups` UUID as a default for each sensor. 
+However, it is preferred to have a unique UUID for each sensor, as it serves as a key. 
+If there are multiple sensors with the same UUID, the attribute values may be overwritten. 
 
 | Parameter | Scope and default | Behavior |
 | --- | --- | --- |
@@ -66,27 +74,21 @@ log diagnostics before the plugin initializes its logger.
 | `sensor_groups` | Plugin file root, mapping | Groups sensors under names of your choice. Names are used in configuration diagnostics. A missing map produces no sensor configurations. |
 | `template` | Group or sensor, optional string | Name of a template in `sensor_templates`. |
 | `sensors` | Group, sequence | Defines the sensors in the group. An empty or missing list yields no sensors for that group. |
-| `uuid` | Template, group, or sensor in Sysfs, SNMP, and Tester | Identifies the SeanerBUS publication destination. The common parser generates a UUID if none remains after all layers. SNMP and Tester replace malformed values with a generated UUID. See the Sysfs and AD sections for UUIDs obtained from the naming service. |
+| `uuid` | Template, group, or sensor in Sysfs, SNMP, and Tester | Identifies the SeanerBroker publication destination. SNMP and Tester replace malformed values with a generated UUID. See the Sysfs and AD sections for UUIDs obtained from the naming service. |
 | `interval_ms` | Template, group, or sensor. Runtime default `0`. | Time in milliseconds between scheduled readings. The first reading is scheduled immediately. Set a positive interval for periodic readings. Zero leaves the next reading due immediately. |
 | `nameserver_parts` | Template, group, or sensor, optional mapping in Sysfs, SNMP, and Tester | Name terms such as `metric`, `rack`, or `hostname` used for registration. The plugin fills in the local hostname if the configured hostname is absent or empty. Sysfs also looks up these terms before registration. AD has its own group-level discovery rules. |
-| `description` | Template, group, or sensor, optional string | Stores a human-readable description. The description is separate from the published `TimeValueV1` timestamp and number. |
+| `description` | Template, group, or sensor, optional string | Stores a human-readable description. |
 | `unit` | Template, group, or sensor, optional string | Stores a unit label. A unit label leaves the numeric value unchanged. |
 | `topic` | Optional string in Sysfs, SNMP, and AD | Stores a label. The sensor UUID selects the publication destination. |
-| `filter` | Optional string in SNMP and AD | Stored as configuration metadata. These plugins publish the numeric response directly. Sysfs applies its own filter behavior. |
-| `factor` | Number in SNMP and AD, default `1` | Stored as configuration metadata. These plugins publish the unscaled response. Sysfs applies its own multiplier. |
-| `offset` | Number in SNMP and AD, default `0` | Stored as configuration metadata. These plugins publish the response without an additive adjustment. Sysfs applies its own offset. |
+| `filter` | Optional string in SNMP and AD | Stored as configuration metadata. These plugins publish the numeric response directly. |
+| `factor` | Number in SNMP and AD, default `1` | Stored as configuration metadata. These plugins publish the unscaled response. |
+| `offset` | Number in SNMP and AD, default `0` | Stored as configuration metadata. These plugins publish the response without an additive adjustment. |
 | Root-level `name` | Optional example field | Set the plugin instance name in the main configuration. The plugin files do not use this field for identity. |
 | Root-level `uuid` | Optional example field | Set the plugin instance UUID in the main configuration. A sensor UUID goes in a sensor field or an inherited layer. |
 
-The shared parser applies a group-level UUID as a default for **each** sensor.
-It does not enable batching. Give each sensor its own UUID or omit the UUID
-where you want the parser to generate one. Duplicate UUIDs use the same map
-entry, with the later configuration replacing the earlier one.
-
-For AD, shared numeric and text fields such as `interval_ms`, `description`,
-and `unit` can come from a group template or directly from the group. AD
-applies them after discovery, and a group value takes precedence over the
-template. The plugin sections below list settings whose behavior differs.
+In the case of the AD plugin, its sensors are not listed in the `ad.yaml` file, instead, they are discovered using the SeanerBroker naming service.
+Once the sensors are discovered, they are created using the retrieved descriptive attributes. 
+In this process, the attributes of the sensors take precedence over the `sensor_groups` and `template` attributes mentioned earlier, if any exist.
 
 ## Sysfs — `sysfs.yaml`
 
@@ -94,7 +96,6 @@ template. The plugin sections below list settings whose behavior differs.
 
 Reads one line from a local file, such as a Linux attribute in `/sys` or
 `/proc/loadavg`, and publishes a numeric value.
-
 Use the [common plugin parameters](#common-plugin-parameters) for
 inheritance and scheduling. The following settings have Sysfs-specific behavior.
 
@@ -109,20 +110,19 @@ inheritance and scheduling. The following settings have Sysfs-specific behavior.
 | `uuid` | Template, group, or sensor | A valid explicit UUID is kept. Sysfs ignores malformed UUID overrides. It adopts a resolved UUID when none was explicit, and a conflict with an explicit UUID fails initialization. If no name resolves, Sysfs registers the configured or generated UUID. |
 
 For example, the shipped `loadavg` group overrides its template’s path with
-`/proc/loadavg`. Each sensor’s filter selects a different number from that
-same line.
+`/proc/loadavg`. Each sensor’s filter selects a different value from that same line.
 
 ### Example — one load-average sensor
 
 The following two files configure a single Sysfs sensor. Adjust the library
 path to match your installation. For example, some installations use `lib64`
-in place of `lib`. Run the collector from the directory containing these two
+in place of `lib`. Run the TC from the directory containing these two
 files so the relative paths resolve.
 
 `config.yaml`:
 
 ```yaml
-seanerbus:
+seanerbroker:
   url: seanerbroker://127.0.0.1:5398
 plugin_status_interval_ms: 1000
 plugins:
@@ -150,11 +150,9 @@ sensor_groups:
         filter: '^(\d+\.\d+)'
 ```
 
-The sensor inherits the path and interval from the template. The regular
-expression captures the first number on the line, and the plugin publishes
-it every two seconds using the sensor UUID. The collector and sensor UUIDs
-serve different purposes. The first identifies the loaded plugin instance,
-while the second identifies the publication destination.
+The sensor inherits its path and interval from the `loadavg` template.
+A regular expression captures the first number on the line, and the plugin publishes this value every two seconds using the sensor's UUID. 
+The plugin UUID identifies the specific plugin instance that is currently loaded.
 
 ## SNMP — `snmp.yaml`
 
@@ -200,9 +198,9 @@ therefore cannot safely supply protocol OIDs for those modes.
 
 [Example YAML](ad.yaml) · [Implementation](../plugins/ad/ad_plugin.cpp)
 
-Discovers remote sensor entities through the SeanerBUS naming service.
+Discovers remote sensor entities through the SeanerBroker naming service.
 It creates a sensor for each matched entity, requests a reading via
-SeanerBUS, and republishes the returned value and timestamp. The naming
+SeanerBroker, and republishes the returned value and timestamp. The naming
 service and the remote request responders must be available.
 
 See the [common plugin parameters](#common-plugin-parameters) for the
@@ -213,13 +211,12 @@ or differ from the shared parser.
 
 | Parameter | Type or default | Behavior |
 | --- | --- | --- |
-| `seanerbus.url` | Required at runtime, supplied by the collector | Broker used for name lookup and requests. The main configuration supplies it before the configurator runs. |
+| `seanerbroker.url` | Required at runtime, supplied by the TC | Broker used for name lookup and requests. The main configuration supplies it before the configurator runs. |
 | `sensor_groups` | Required mapping | Each group describes a discovery query. If all queries yield no sensors, the configurator rejects the plugin configuration. |
 | `sensor_groups.<group>.nameserver_parts` | Required mapping on the group itself | Terms sent in the lookup, such as `hostname`. Put lookup terms directly on the group because discovery runs before template fields are applied. A group without this mapping is skipped. |
 | `sensors` | Unused by AD | The naming service returns the sensors for each group. |
-| `connection_uuid` | Unused by AD | The commented example field has no effect on the connection or request target. |
 | `template` | Group, optional string | Selects defaults applied after discovery, before the fields directly on the group. |
-| `uuid` | Normally omit from group and template | AD initializes each sensor’s UUID from discovery. An explicit UUID in the applied fields overrides the UUID used for requests and publication. A malformed value generates a UUID. Leave it unset to retain each discovered entity’s UUID. |
+| `uuid` | Normally omit from group and template | AD initializes each sensor’s UUID from discovery. An explicit UUID in the applied fields overrides the UUID used for requests and publication. Leave it empty to retain each discovered entity’s UUID. |
 
 ## Tester — `tester.yaml`
 
