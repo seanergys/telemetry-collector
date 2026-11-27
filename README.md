@@ -6,6 +6,7 @@ SPDX-License-Identifier: EUPL-1.2
 
 # Telemetry Collector
 
+[![Version 0.6.0](https://img.shields.io/badge/version-0.6.0-2563EB)](CMakeLists.txt)
 [![GitLab CI and test pipeline status on main](https://gitlab.seanergys.fz-juelich.de/software/telemetry-collector/badges/main/pipeline.svg?key_text=CI%20%26%20tests)](https://gitlab.seanergys.fz-juelich.de/software/telemetry-collector/-/pipelines?ref=main)
 [![C++20](https://img.shields.io/badge/C%2B%2B-20-00599C)](#source-tree)
 [![Documentation](https://img.shields.io/badge/docs-guides-2563EB)](docs/README.md)
@@ -131,3 +132,4 @@ The views and opinions are those of the authors. They may differ from those of
 the European Union and the granting authority. Neither the European Union nor
 the granting authority can be held responsible for them.
 
+Contact us: contact@seanergys.eu
