@@ -19,7 +19,7 @@ SPDX-License-Identifier: EUPL-1.2
 [![Publishes through SeanerBUS](https://img.shields.io/badge/transport-SeanerBUS-0E7490)](RUN.md)
 
 [Install](INSTALL.md) · [Run locally](RUN.md) · [Configuration](config/README.md) · [Plugins](#implemented-plugins) ·
-[Test reports](#test-reports) · [Contributing](CONTRIBUTING.md)
+[Test reports](#test-reports) · [Contributing](CONTRIBUTING.md) · [Credits and funding](#credits-and-funding)
 
 **Topics** `telemetry` · `monitoring` · `linux` · `snmp` · `seanerbus` · `cpp` · `cmake` · `spack`
 
@@ -112,4 +112,22 @@ started for each plugin.
 | SNMP | [Collector](https://gitlab.seanergys.fz-juelich.de/api/v4/projects/software%2Ftelemetry-collector/jobs/artifacts/main/raw/build/test-artifacts/plugin-tests/snmp/snmp/collector.log?job=test_report) | [Naming](https://gitlab.seanergys.fz-juelich.de/api/v4/projects/software%2Ftelemetry-collector/jobs/artifacts/main/raw/build/test-artifacts/plugin-tests/snmp/naming.log?job=test_report) | [Broker](https://gitlab.seanergys.fz-juelich.de/api/v4/projects/software%2Ftelemetry-collector/jobs/artifacts/main/raw/build/test-artifacts/plugin-tests/snmp/broker.log?job=test_report) | [Agent](https://gitlab.seanergys.fz-juelich.de/api/v4/projects/software%2Ftelemetry-collector/jobs/artifacts/main/raw/build/test-artifacts/plugin-tests/snmp/snmpd.log?job=test_report) | [Subscriber](https://gitlab.seanergys.fz-juelich.de/api/v4/projects/software%2Ftelemetry-collector/jobs/artifacts/main/raw/build/test-artifacts/plugin-tests/snmp/snmp/subscriber.log?job=test_report) | [Collector YAML](https://gitlab.seanergys.fz-juelich.de/api/v4/projects/software%2Ftelemetry-collector/jobs/artifacts/main/raw/build/test-artifacts/plugin-tests/snmp/snmp/telemetry_collector.yaml?job=test_report), [Plugin YAML](https://gitlab.seanergys.fz-juelich.de/api/v4/projects/software%2Ftelemetry-collector/jobs/artifacts/main/raw/build/test-artifacts/plugin-tests/snmp/snmp/plugin.yaml?job=test_report) |
 
 [Plugin test results (JUnit)](https://gitlab.seanergys.fz-juelich.de/api/v4/projects/software%2Ftelemetry-collector/jobs/artifacts/main/raw/build/test-artifacts/plugin-tests/junit.xml?job=test_report)
+
+## Credits and funding
+
+<a href="https://seanergys.eu/"><img src="docs/assets/seanergys.png" alt="SEANERGYS" width="260"></a>
+<a href="https://www.eurohpc-ju.europa.eu/"><img src="docs/assets/eurohpc-ju.png" alt="EuroHPC Joint Undertaking" width="150"></a>
+
+The Telemetry Collector is developed by the partners of
+[SEANERGYS (Software for Efficient and Energy-Aware Supercomputers)](https://seanergys.eu/).
+
+The European High Performance Computing Joint Undertaking (EuroHPC JU) funds
+SEANERGYS under [grant agreement No. 101177590](https://cordis.europa.eu/project/id/101177590).
+The Joint Undertaking receives support from the European Union’s Horizon Europe
+research and innovation programme and from the Czech Republic, France, Germany,
+Greece, Italy, and Spain. See the [SEANERGYS funding page](https://seanergys.eu/funding/).
+
+The views and opinions are those of the authors. They may differ from those of
+the European Union and the granting authority. Neither the European Union nor
+the granting authority can be held responsible for them.
 
