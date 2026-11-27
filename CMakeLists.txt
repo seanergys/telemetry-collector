@@ -4,7 +4,7 @@
 
 cmake_minimum_required(VERSION 3.13)
 
-project(telemetry_collector VERSION 0.1
+project(telemetry_collector VERSION 0.6.0
         DESCRIPTION "SEANERGYS Telemetry Collector" LANGUAGES CXX)
 
 include(CTest)
